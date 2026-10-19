@@ -1,0 +1,63 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Expo: installer les dépendances",
+      "type": "shell",
+      "command": "npm install",
+      "options": { "cwd": "${workspaceFolder}/expo-app" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Expo: démarrer le serveur (Expo Go)",
+      "type": "shell",
+      "command": "npm start",
+      "options": { "cwd": "${workspaceFolder}/expo-app" },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Expo: vérifier les types",
+      "type": "shell",
+      "command": "npm run typecheck",
+      "options": { "cwd": "${workspaceFolder}/expo-app" },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "Flutter: installer les paquets",
+      "type": "shell",
+      "command": "flutter pub get",
+      "options": { "cwd": "${workspaceFolder}/flutter-app" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Flutter: lancer sur l'appareil",
+      "type": "shell",
+      "command": "flutter run --dart-define-from-file=env.json",
+      "options": { "cwd": "${workspaceFolder}/flutter-app" },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Flutter: analyser",
+      "type": "shell",
+      "command": "flutter analyze",
+      "options": { "cwd": "${workspaceFolder}/flutter-app" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Flutter: tests",
+      "type": "shell",
+      "command": "flutter test",
+      "options": { "cwd": "${workspaceFolder}/flutter-app" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Git: pousser sur GitHub",
+      "type": "shell",
+      "command": "git push -u origin main",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    }
+  ]
+}
