@@ -105,9 +105,11 @@ firebase deploy --only functions
 
 ## 4. Données de démonstration
 
-Au **premier lancement**, si la collection `providers` est vide, l'application insère automatiquement 6 prestataires, 3 missions et 2 messages.
+Au **premier lancement en développement**, si la collection `providers` est vide, l'application insère automatiquement 6 prestataires, 3 missions et 2 messages.
 
 Pour réinitialiser : bouton **« Réinitialiser les données »** dans l'onglet Marketplace (Expo et Flutter).
+
+> ⚠️ **Ces deux mécanismes sont réservés aux builds de développement** (`__DEV__` côté Expo, `kDebugMode` côté Flutter). La base Firestore `linkup-gabon` étant partagée avec le site en production, un appui sur « Réinitialiser » depuis une application publiée **effacerait les vraies données du site**. En production, le bouton n'est pas affiché et l'amorçage ne s'exécute pas.
 
 ---
 

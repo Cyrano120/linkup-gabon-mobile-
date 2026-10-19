@@ -48,7 +48,7 @@ Les trois clients sont indépendants mais partagent :
 1. `main.dart` initialise Firebase puis `NotificationService`.
 2. `AuthController` écoute `authStateChanges()` et expose l'utilisateur.
 3. `DataController` écoute à son tour `authStateChanges()`, puis souscrit aux collections `providers`, `requests`, `messages`.
-4. À la première connexion, si `providers` est vide → seed des données de démo.
+4. À la première connexion **en développement**, si `providers` est vide → seed des données de démo. En production, aucun seed n'est injecté : la base est partagée avec le site.
 5. Chaque mutation (`addRequest`, `bookProvider`, `acceptCandidate`…) écrit dans Firestore ; l'UI se met à jour via les streams.
 6. Le contrôleur compare les identifiants déjà vus pour notifier localement les **nouveaux** documents des autres utilisateurs.
 

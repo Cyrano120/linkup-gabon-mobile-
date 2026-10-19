@@ -7,7 +7,12 @@ plugins {
 android {
     namespace = "ga.linkup.linkup_gabon"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // Pas de `ndkVersion` : aucun plugin du projet n'embarque de code natif
+    // C/C++ côté Android. Les CMakeLists des plugins Firebase ne concernent que
+    // leurs versions Windows/Linux. Déclarer `flutter.ndkVersion` forçait Gradle
+    // à exiger un NDK de plusieurs Go, dont le téléchargement s'était interrompu
+    // (dossier `C:\Android\ndk\28.2.13676358` réduit à un `.installer` vide) et
+    // qui bloquait tout le build.
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

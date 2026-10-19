@@ -23,6 +23,7 @@ Une seule logique métier, deux stacks : **React Native + Expo** et **Flutter + 
 - [Architecture du dépôt](#architecture-du-dépôt)
 - [Démarrage — version Expo](#démarrage--version-expo)
 - [Démarrage — version Flutter](#démarrage--version-flutter)
+- [Démarrage — VS Code](#démarrage--vs-code)
 - [Configuration Firebase](#configuration-firebase)
 - [Notifications](#notifications)
 - [Modèle de données](#modèle-de-données)
@@ -68,7 +69,7 @@ Parité fonctionnelle complète entre les deux applications :
 <tr><td>Messagerie : envoi, boîtes reçus / envoyés</td><td align="center">✅</td><td align="center">✅</td></tr>
 <tr><td>Devenir prestataire (création de vitrine)</td><td align="center">✅</td><td align="center">✅</td></tr>
 <tr><td>Notifications (nouvelles missions / nouveaux messages)</td><td align="center">✅</td><td align="center">✅</td></tr>
-<tr><td>Réinitialisation des données de démonstration</td><td align="center">✅</td><td align="center">✅</td></tr>
+<tr><td>Réinitialisation des données de démonstration <em>(développement uniquement)</em></td><td align="center">✅</td><td align="center">✅</td></tr>
 </table>
 
 **Design system partagé** : palette gabonaise (`#009E60` vert, `#FCD116` jaune, `#3A75C4` bleu), fond dégradé sombre, cartes claires « verre », badges de statut, typographie lourde — identiques visuellement sur les deux apps et cohérents avec le web.
@@ -85,12 +86,12 @@ linkup-gabon-mobile/
 │   │   │   ├── _layout.tsx    # providers + Stack + deep-links notifications
 │   │   │   ├── index.tsx      # redirection selon la session
 │   │   │   ├── (auth)/        # login.tsx, register.tsx
-│   │   │   ├── (tabs)/        # index, market, create, missions, messages
+│   │   │   ├── (tabs)/        # home, market, create, missions, messages
 │   │   │   ├── provider/[id].tsx
 │   │   │   └── become.tsx
 │   │   ├── components/        # ui.tsx, ProviderCard, RequestCard, BookingModal
 │   │   ├── context/           # AuthContext, DataContext, ToastContext
-│   │   ├── lib/               # firebase, firestore, notifications, format
+│   │   ├── lib/               # firebase, firestore, notifications, authErrors, demoData, format
 │   │   ├── data.ts            # constantes + données de démo
 │   │   ├── theme.ts           # design tokens
 │   │   └── types.ts
@@ -105,6 +106,7 @@ linkup-gabon-mobile/
 │   │   ├── models/            # Provider, ServiceRequest, Message
 │   │   ├── services/          # firestore_service, notification_service
 │   │   ├── state/             # auth_controller, data_controller
+│   │   ├── utils/              # auth_errors, demo_data
 │   │   ├── widgets/           # ui, provider_card, request_card, booking_sheet
 │   │   └── screens/           # 11 écrans
 │   ├── android/ · ios/        # projets natifs
@@ -192,6 +194,41 @@ flutter build ios           # build iOS (macOS requis)
 
 ---
 
+## Démarrage — VS Code
+
+Le dépôt contient une configuration VS Code prête à l'emploi (`.vscode/`).
+
+**Extensions requises** (VS Code les propose à l'ouverture du dossier) :
+
+| Extension | Rôle |
+|---|---|
+| `Dart-Code.dart-code` | Dart : analyse, formatage, débogage |
+| `Dart-Code.flutter` | Flutter : lancement, hot reload, DevTools |
+| `dbaeumer.vscode-eslint` | ESLint pour l'app Expo |
+| `expo.vscode-expo-tools` | Outils Expo |
+
+**Lancer l'app Flutter** — ouvre le panneau *Exécuter et déboguer* (`Ctrl+Shift+D`), choisis une configuration, puis `F5` :
+
+| Configuration | Effet |
+|---|---|
+| **Flutter : TECNO CK6 (téléphone)** | Compile et installe sur l'appareil branché en USB |
+| **Flutter : choisir l'appareil** | Identique, en laissant Flutter demander quel appareil utiliser |
+| **Flutter : tests** | Exécute les tests sous le débogueur |
+
+> La configuration transmet automatiquement `--dart-define-from-file=env.json` : c'est ce qui fournit les clés Firebase à l'app.
+
+**Lancer l'app Expo** — passe par les tâches (`Ctrl+Shift+P` → *Tasks: Run Task*) :
+
+| Tâche | Effet |
+|---|---|
+| **Expo: installer les dépendances** | `npm install` dans `expo-app` |
+| **Expo: démarrer le serveur (Expo Go)** | Démarre Metro ; scanne ensuite le QR code avec Expo Go |
+| **Expo: vérifier les types** | `tsc --noEmit` |
+
+> `F5` étant réservé à Flutter, lance Expo via une tâche : les deux apps se démarrent indépendamment.
+
+---
+
 ## Configuration Firebase
 
 Les deux apps se connectent au projet Firebase **`linkup-gabon`** (le même que le web). Détail complet dans **[`docs/FIREBASE.md`](docs/FIREBASE.md)**.
@@ -208,7 +245,7 @@ En résumé :
 3. Récupérer la configuration web (Paramètres du projet → Vos apps → Web) et la reporter dans `expo-app/.env` et `flutter-app/env.json`.
 4. Pour le push : ajouter une app Android (`google-services.json`) et iOS (`GoogleService-Info.plist`).
 
-> Les collections **`providers`**, **`requests`** et **`messages`** sont auto-alimentées avec des données de démonstration au premier lancement (puis réinitialisables depuis la marketplace).
+> ⚠️ Les collections **`providers`**, **`requests`** et **`messages`** sont **partagées avec le site en production**. L'amorçage automatique et le bouton « Réinitialiser les données » sont donc réservés aux **builds de développement** (`__DEV__` côté Expo, `kDebugMode` côté Flutter) : ils ne s'exécutent jamais dans une application publiée.
 
 ---
 
@@ -250,14 +287,17 @@ Catégories : `Informatique`, `Cours`, `Livraison`, `Design & Web`.
 | Vérification | Commande | Résultat |
 |---|---|---|
 | Types Expo | `cd expo-app && npx tsc --noEmit` | ✅ 0 erreur |
+| Lint Expo | `cd expo-app && npx expo lint` | ✅ 0 problème |
 | Analyse Flutter | `cd flutter-app && flutter analyze` | ✅ 0 issue |
-| Tests Flutter | `cd flutter-app && flutter test` | ✅ 2/2 |
+| Tests Flutter | `cd flutter-app && flutter test` | ✅ 6/6 |
 
 Choix techniques notables :
 
 - **Expo** : `initializeAuth` + `getReactNativePersistence` pour conserver la session, `initializeFirestore({ experimentalForceLongPolling: true })` pour fiabiliser le streaming réseau en React Native.
 - **Flutter** : Firebase initialisé **par options runtime** (`--dart-define-from-file`), donc aucun fichier de config natif requis pour démarrer ; `firebase_messaging`/notifications encapsulés en `try/catch` pour ne jamais bloquer l'app.
 - **Sécurité** : dépôt multi-apps → un seul `firestore.rules` versionné, avec règle dédiée `devices/{userId}` (écriture limitée au propriétaire).
+- **Erreurs d'auth** : traduites depuis le code Firebase (`auth/...`) vers des phrases françaises, dans une table strictement identique côté Expo et côté Flutter.
+- **Données de démo** : amorçage et réinitialisation conditionnés à l'environnement de développement, car la base est partagée avec la production.
 
 ---
 
