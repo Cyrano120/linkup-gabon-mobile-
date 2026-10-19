@@ -3,13 +3,17 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import * as Notifications from 'expo-notifications';
 
 import { AuthProvider } from '../context/AuthContext';
-import { DataProvider } from '../context/DataContext';
+import { DataScope } from '../context/DataContext';
 import { ToastProvider } from '../context/ToastContext';
 import { isFirebaseConfigured } from '../lib/firebase';
-import { configureNotificationHandler } from '../lib/notifications';
+import {
+  addNotificationResponseReceivedListener,
+  configureNotificationHandler,
+  getLastNotificationResponse,
+} from '../lib/notifications';
+import type { Notification } from '../lib/notifications';
 import { colors, spacing } from '../theme';
 
 configureNotificationHandler();
@@ -17,17 +21,17 @@ configureNotificationHandler();
 /** Ouvre l'écran ciblé quand l'utilisateur tape une notification (deep link). */
 function useNotificationObserver() {
   useEffect(() => {
-    function redirect(notification: Notifications.Notification) {
+    function redirect(notification: Notification) {
       const url = notification.request.content.data?.url;
       if (typeof url === 'string') {
         router.push(url as never);
       }
     }
 
-    const response = Notifications.getLastNotificationResponse();
+    const response = getLastNotificationResponse();
     if (response?.notification) redirect(response.notification);
 
-    const subscription = Notifications.addNotificationResponseReceivedListener((res) => {
+    const subscription = addNotificationResponseReceivedListener((res) => {
       redirect(res.notification);
     });
 
@@ -63,7 +67,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <DataProvider>
+        <DataScope>
           <ToastProvider>
             <StatusBar style="light" />
             <Stack
@@ -79,7 +83,7 @@ export default function RootLayout() {
               <Stack.Screen name="become" options={{ presentation: 'modal' }} />
             </Stack>
           </ToastProvider>
-        </DataProvider>
+        </DataScope>
       </AuthProvider>
     </SafeAreaProvider>
   );

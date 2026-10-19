@@ -6,6 +6,7 @@ import '../core/theme.dart';
 import '../models/provider.dart';
 import '../state/auth_controller.dart';
 import '../state/data_controller.dart';
+import '../utils/demo_data.dart';
 import '../widgets/booking_sheet.dart';
 import '../widgets/provider_card.dart';
 import '../widgets/ui.dart';
@@ -242,25 +243,37 @@ class _MarketScreenState extends State<MarketScreen> {
                 icon: Icons.people_outline,
               ),
               const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: AppButton(
-                    label: 'Réinitialiser les données',
-                    variant: AppButtonVariant.ghost,
-                    icon: Icons.refresh,
-                    compact: true,
-                    onPressed: () async {
-                      final messenger = ScaffoldMessenger.of(context);
-                      await data.resetDemoData();
-                      if (!mounted) return;
-                      messenger.showSnackBar(
-                        const SnackBar(content: Text('Données de démo réinitialisées.')),
-                      );
-                    },
+              if (isDemoDataEnabled)
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: AppButton(
+                      label: 'Réinitialiser les données',
+                      variant: AppButtonVariant.ghost,
+                      icon: Icons.refresh,
+                      compact: true,
+                      onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        try {
+                          await data.resetDemoData();
+                          if (!mounted) return;
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('Données de démo réinitialisées.'),
+                            ),
+                          );
+                        } catch (_) {
+                          if (!mounted) return;
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('Réinitialisation impossible.'),
+                            ),
+                          );
+                        }
+                      },
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: AppSpacing.lg),

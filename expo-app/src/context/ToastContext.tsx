@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { Animated, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { radius, shadow, spacing } from '../theme';
@@ -16,7 +16,10 @@ export function useToast(): ToastContextValue {
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [message, setMessage] = useState('');
-  const opacity = useRef(new Animated.Value(0)).current;
+  // `useState` avec initialiseur paresseux plutôt que `useRef(...).current` :
+  // la valeur animée n'a pas besoin d'être recréée, mais lire un `.current`
+  // pendant le rendu est déconseillé par React.
+  const [opacity] = useState(() => new Animated.Value(0));
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const insets = useSafeAreaInsets();
 

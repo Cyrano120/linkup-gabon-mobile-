@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -16,7 +16,8 @@ import type { NewRequestInput, Provider, Urgency } from '../types';
 import { Btn, Chip, Field } from './ui';
 
 interface Props {
-  provider: Provider | null;
+  /** Toujours défini : le parent ne monte le modal qu'avec un prestataire choisi. */
+  provider: Provider;
   visible: boolean;
   defaultClient: string;
   onClose: () => void;
@@ -25,27 +26,17 @@ interface Props {
 
 export function BookingModal({ provider, visible, defaultClient, onClose, onSubmit }: Props) {
   const insets = useSafeAreaInsets();
+  // Initialisation directe depuis le prestataire : le parent remonte ce
+  // composant quand le prestataire change (`key`), donc l'état repart de zéro
+  // sans effet de synchronisation.
   const [client, setClient] = useState(defaultClient);
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(`Demande pour ${provider.role}`);
   const [description, setDescription] = useState('');
-  const [budget, setBudget] = useState('');
-  const [location, setLocation] = useState('');
+  const [budget, setBudget] = useState(String(provider.price));
+  const [location, setLocation] = useState(provider.location);
   const [urgency, setUrgency] = useState<Urgency>("Aujourd'hui");
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!provider) return;
-    setClient(defaultClient);
-    setTitle(`Demande pour ${provider.role}`);
-    setDescription('');
-    setBudget(String(provider.price));
-    setLocation(provider.location);
-    setUrgency("Aujourd'hui");
-    setError('');
-  }, [provider, defaultClient]);
-
-  if (!provider) return null;
 
   async function submit() {
     setError('');
@@ -58,7 +49,7 @@ export function BookingModal({ provider, visible, defaultClient, onClose, onSubm
       await onSubmit({
         client,
         title,
-        category: provider!.category,
+        category: provider.category,
         budget: Number(budget) || 0,
         location,
         urgency,

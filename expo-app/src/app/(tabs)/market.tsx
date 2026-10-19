@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { categories, localAreas } from '../../data';
+import { isDemoDataEnabled } from '../../lib/demoData';
 import { colors, radius, shadow, spacing } from '../../theme';
 import type { Category, NewRequestInput, Provider } from '../../types';
 
@@ -25,6 +26,9 @@ export default function MarketScreen() {
   const [maxBudget, setMaxBudget] = useState('');
   const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [booking, setBooking] = useState<Provider | null>(null);
+  // Distinct de `booking` pour laisser la feuille se fermer en animant : on
+  // garde le prestataire en mémoire et on ne masque que le modal.
+  const [bookingVisible, setBookingVisible] = useState(false);
 
   const displayName = user?.displayName || user?.email?.split('@')[0] || 'Client';
 
@@ -126,17 +130,19 @@ export default function MarketScreen() {
           tone="info"
           icon="people-outline"
         />
-        <Btn
-          compact
-          variant="ghost"
-          icon="refresh"
-          label="Réinitialiser les données"
-          onPress={() => {
-            resetDemoData()
-              .then(() => toast.show('Données de démo réinitialisées.'))
-              .catch(() => toast.show('Réinitialisation impossible.'));
-          }}
-        />
+        {isDemoDataEnabled ? (
+          <Btn
+            compact
+            variant="ghost"
+            icon="refresh"
+            label="Réinitialiser les données"
+            onPress={() => {
+              resetDemoData()
+                .then(() => toast.show('Données de démo réinitialisées.'))
+                .catch(() => toast.show('Réinitialisation impossible.'));
+            }}
+          />
+        ) : null}
       </View>
 
       <SectionTitle kicker="Résultats" title="Profils correspondants." />
@@ -152,18 +158,24 @@ export default function MarketScreen() {
             key={provider._firestoreId ?? provider.id}
             provider={provider}
             onOpen={(p) => router.push(`/provider/${p.id}`)}
-            onBook={(p) => setBooking(p)}
+            onBook={(p) => {
+              setBooking(p);
+              setBookingVisible(true);
+            }}
           />
         ))
       )}
 
-      <BookingModal
-        provider={booking}
-        visible={Boolean(booking)}
-        defaultClient={displayName}
-        onClose={() => setBooking(null)}
-        onSubmit={handleSubmitBooking}
-      />
+      {booking ? (
+        <BookingModal
+          key={booking.id}
+          provider={booking}
+          visible={bookingVisible}
+          defaultClient={displayName}
+          onClose={() => setBookingVisible(false)}
+          onSubmit={handleSubmitBooking}
+        />
+      ) : null}
     </Screen>
   );
 }

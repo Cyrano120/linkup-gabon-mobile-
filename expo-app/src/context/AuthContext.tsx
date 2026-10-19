@@ -9,6 +9,7 @@ import {
 } from 'firebase/auth';
 
 import { auth, isFirebaseConfigured, requireAuth } from '../lib/firebase';
+import { describeAuthError } from '../lib/authErrors';
 import { registerForPushNotificationsAsync } from '../lib/notifications';
 
 interface AuthContextValue {
@@ -32,19 +33,17 @@ export function useAuth(): AuthContextValue {
 }
 
 function cleanError(error: unknown): string {
-  const raw = error instanceof Error ? error.message : String(error);
-  return raw.replace('Firebase: ', '').replace(/\(auth\/.*\)/, '').trim() || 'Une erreur est survenue.';
+  return describeAuthError(error);
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Sans configuration Firebase, il n'y a aucune session à attendre : on démarre
+  // directement « chargé », ce qui évite de corriger l'état dans un effet.
+  const [loading, setLoading] = useState(() => Boolean(isFirebaseConfigured && auth));
 
   useEffect(() => {
-    if (!isFirebaseConfigured || !auth) {
-      setLoading(false);
-      return;
-    }
+    if (!isFirebaseConfigured || !auth) return;
     return onAuthStateChanged(auth, (next) => {
       setUser(next);
       setLoading(false);

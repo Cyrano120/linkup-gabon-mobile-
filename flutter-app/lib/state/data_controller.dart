@@ -9,6 +9,7 @@ import '../models/provider.dart';
 import '../models/service_request.dart';
 import '../services/firestore_service.dart';
 import '../services/notification_service.dart';
+import '../utils/demo_data.dart';
 
 /// Données temps réel (prestataires, missions, messages) + logique métier.
 class DataController extends ChangeNotifier {
@@ -80,7 +81,9 @@ class DataController extends ChangeNotifier {
     _cancelSubscriptions();
 
     _providersSub = FirestoreService.providersStream().listen((list) {
-      if (list.isEmpty && !_seeding) {
+      // En release, on n'injecte jamais de démo : la base est partagée avec le
+      // site, une collection vide est un choix légitime.
+      if (list.isEmpty && !_seeding && isDemoDataEnabled) {
         _seeding = true;
         unawaited(_seedDemoData());
         return;
@@ -297,6 +300,14 @@ class DataController extends ChangeNotifier {
   }
 
   Future<void> resetDemoData() async {
+    // Sécurité avant tout : ce bouton SUPPRIME des documents dans la base
+    // partagée avec le site en production. On refuse l'opération hors debug,
+    // même si l'interface ne devrait jamais l'exposer.
+    if (!isDemoDataEnabled) {
+      throw StateError(
+        'Données de démo désactivées : elles sont partagées avec la production.',
+      );
+    }
     await FirestoreService.clearCollection('providers');
     await FirestoreService.clearCollection('requests');
     await FirestoreService.clearCollection('messages');

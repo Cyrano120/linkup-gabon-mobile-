@@ -147,8 +147,9 @@ export default function ProviderDetailScreen() {
         />
       </LinearGradient>
 
+      {/* Toujours monté : la feuille peut ainsi se fermer en animant. */}
       <BookingModal
-        provider={bookingOpen ? provider : null}
+        provider={provider}
         visible={bookingOpen}
         defaultClient={displayName}
         onClose={() => setBookingOpen(false)}

@@ -4,6 +4,11 @@ import { Redirect, Tabs } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { colors } from '../../theme';
 
+/** L'onglet ouvert par défaut quand on entre dans le groupe `(tabs)`. */
+export const unstable_settings = {
+  initialRouteName: 'home',
+};
+
 export default function TabsLayout() {
   const { user, loading } = useAuth();
 
@@ -29,7 +34,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
+        name="home"
         options={{
           title: 'Accueil',
           tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color as string} />,

@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 
 import { initialMessages, initialProviders, initialRequests } from '../data';
+import { isDemoDataEnabled } from '../lib/demoData';
 import { addDocument, clearCollection, seedCollection, subscribeToCollection, updateDocument } from '../lib/firestore';
 import { presentLocalNotification } from '../lib/notifications';
 import type { Message, NewProviderInput, NewRequestInput, Provider, ServiceRequest } from '../types';
@@ -33,11 +34,11 @@ const DataContext = createContext<DataContextValue | null>(null);
 
 export function useData(): DataContextValue {
   const ctx = useContext(DataContext);
-  if (!ctx) throw new Error('useData doit être utilisé dans <DataProvider>.');
+  if (!ctx) throw new Error('useData doit être utilisé dans <DataScope>.');
   return ctx;
 }
 
-export function DataProvider({ children }: { children: React.ReactNode }) {
+function DataProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [providers, setProviders] = useState<Provider[]>([]);
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
@@ -51,7 +52,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     messages: new Set(),
   });
   const userIdRef = useRef<string | null>(null);
-  userIdRef.current = user?.uid ?? null;
+
+  // L'identifiant est relu dans les callbacks d'abonnement (asynchrones) : on le
+  // synchronise dans un effet plutôt que pendant le rendu.
+  useEffect(() => {
+    userIdRef.current = user?.uid ?? null;
+  }, [user]);
 
   const seedInitialData = useCallback(async () => {
     await Promise.all([
@@ -62,19 +68,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!user) {
-      setProviders([]);
-      setRequests([]);
-      setMessages([]);
-      setReady(false);
-      seededRef.current = false;
-      loadedRef.current = { requests: false, messages: false };
-      seenRef.current = { requests: new Set(), messages: new Set() };
-      return;
-    }
+    // Aucun compte : rien à écouter. L'état est déjà vierge, car <DataScope>
+    // remonte ce provider à chaque changement de compte (voir en fin de fichier).
+    if (!user) return;
 
     const unsubProviders = subscribeToCollection('providers', (rows) => {
-      if (rows.length === 0 && !seededRef.current) {
+      // En production, on n'injecte jamais de démo : la base est partagée avec
+      // le site, une collection vide est un choix légitime.
+      if (rows.length === 0 && !seededRef.current && isDemoDataEnabled) {
         seededRef.current = true;
         seedInitialData().catch((error) => console.warn('[seed] providers', error));
         return;
@@ -128,8 +129,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       unsubMessages();
     };
   }, [user, seedInitialData]);
-
-  const displayName = user?.displayName || user?.email?.split('@')[0] || 'Client';
 
   const addRequest = useCallback(
     async (input: NewRequestInput) => {
@@ -238,6 +237,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   );
 
   const resetDemoData = useCallback(async () => {
+    // Sécurité avant tout : ce bouton SUPPRIME des documents dans la base
+    // partagée avec le site en production. On refuse l'opération hors dev,
+    // même si l'interface ne devrait jamais l'exposer.
+    if (!isDemoDataEnabled) {
+      throw new Error(
+        'Données de démo désactivées : elles sont partagées avec la production.',
+      );
+    }
     await Promise.all([
       clearCollection('providers'),
       clearCollection('requests'),
@@ -279,4 +286,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   );
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
+}
+
+/**
+ * À utiliser à la place de `<DataProvider>` pour monter les données.
+ *
+ * Pourquoi une `key` : changer de compte doit repartir de listes vides, sinon
+ * les données du compte précédent resteraient affichées un instant après une
+ * reconnexion. Faire varier la `key` remonte le provider, ce qui réinitialise
+ * tout son état — c'est le pattern recommandé par React, et il évite le
+ * `setState` synchrone dans un effet que le lint refuse à juste titre.
+ */
+export function DataScope({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  return <DataProvider key={user?.uid ?? 'anonyme'}>{children}</DataProvider>;
 }

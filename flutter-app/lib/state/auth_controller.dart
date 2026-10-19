@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../services/notification_service.dart';
+import '../utils/auth_errors.dart';
 
 /// Gère la session Firebase Auth et expose un état simple aux écrans.
 class AuthController extends ChangeNotifier {
@@ -42,14 +43,6 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  static String _clean(Object error) {
-    final raw = error.toString();
-    return raw
-        .replaceFirst('FirebaseException: ', '')
-        .replaceAll(RegExp(r'\[firebase_auth/[^\]]+\]'), '')
-        .trim();
-  }
-
   Future<bool> login(String email, String password) async {
     _busy = true;
     _error = null;
@@ -61,7 +54,7 @@ class AuthController extends ChangeNotifier {
       );
       return true;
     } catch (error) {
-      _error = _clean(error);
+      _error = describeAuthError(error);
       return false;
     } finally {
       _busy = false;
@@ -85,7 +78,7 @@ class AuthController extends ChangeNotifier {
       }
       return true;
     } catch (error) {
-      _error = _clean(error);
+      _error = describeAuthError(error);
       return false;
     } finally {
       _busy = false;
