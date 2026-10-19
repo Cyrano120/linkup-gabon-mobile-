@@ -1,0 +1,39 @@
+# Racine mobile — dépendances installées mais pas commitées côté Flutter
+node_modules/
+
+# Expo / React Native
+expo-app/.expo/
+expo-app/dist/
+expo-app/web-build/
+expo-app/expo-env.d.ts
+expo-app/ios/
+expo-app/android/
+
+# Secrets & env
+.env
+.env.local
+.env*.local
+!**/.env.example
+env.json
+
+# Flutter / Dart
+flutter-app/.dart_tool/
+flutter-app/.packages
+flutter-app/build/
+flutter-app/.flutter-plugins
+flutter-app/.flutter-plugins-dependencies
+flutter-app/*.iml
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

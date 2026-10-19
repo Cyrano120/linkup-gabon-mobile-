@@ -1,0 +1,286 @@
+import '../models/message.dart';
+import '../models/provider.dart';
+import '../models/service_request.dart';
+
+const categories = <String>['Informatique', 'Cours', 'Livraison', 'Design & Web'];
+
+const localAreas = <String>[
+  'Libreville',
+  'Akanda',
+  'Owendo',
+  'Nzeng-Ayong',
+  'Glass',
+  'Louis',
+  'PK12',
+  'Port-Gentil',
+];
+
+const statuses = <String>['Ouverte', 'En discussion', 'Confirmée', 'Terminée'];
+
+const urgencies = <String>["Aujourd'hui", 'Demain', 'Cette semaine', 'Flexible'];
+
+class HowItWorksStep {
+  const HowItWorksStep(this.title, this.text);
+  final String title;
+  final String text;
+}
+
+const howItWorksSteps = <HowItWorksStep>[
+  HowItWorksStep(
+    'Tu expliques le besoin',
+    'Un PC à réparer à PK12, un flyer pour une soirée à Glass ou un cours de maths à Batterie IV.',
+  ),
+  HowItWorksStep(
+    'LinkUp rapproche les bons profils',
+    'Compare les prix, la disponibilité, les compétences et le quartier du prestataire.',
+  ),
+  HowItWorksStep(
+    'Vous confirmez sur place',
+    'Validez le tarif en FCFA et choisissez Airtel Money, Moov Money ou espèce.',
+  ),
+];
+
+class Testimonial {
+  const Testimonial(this.name, this.text);
+  final String name;
+  final String text;
+}
+
+const testimonials = <Testimonial>[
+  Testimonial(
+    'Ariane, étudiante à l’UOB',
+    'J’ai trouvé quelqu’un pour remettre mon ordinateur en état avant un devoir.',
+  ),
+  Testimonial(
+    'Brice, graphiste à Akanda',
+    'LinkUp me donne une vitrine simple. Je montre ce que je sais faire sans gros portfolio.',
+  ),
+  Testimonial(
+    'Nadya, commerçante à Nzeng-Ayong',
+    'Pour mes flyers WhatsApp, je préfère un jeune du coin qui comprend le style local.',
+  ),
+];
+
+class ServiceHighlight {
+  const ServiceHighlight(this.title, this.text, this.image);
+  final String title;
+  final String text;
+  final String image;
+}
+
+const serviceHighlights = <ServiceHighlight>[
+  ServiceHighlight(
+    'Dépannage à Libreville',
+    'PC, imprimante, wifi ou logiciel bloqué : trouve quelqu’un proche de ton quartier.',
+    'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80',
+  ),
+  ServiceHighlight(
+    'Cours et soutien',
+    'Révision, exposé, anglais, maths ou bureautique avec des profils proches du campus.',
+    'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80',
+  ),
+  ServiceHighlight(
+    'Création locale',
+    'Flyers, logos, reels et sites pour snacks, salons, événements et petits commerces.',
+    'https://images.unsplash.com/photo-1558655146-d09347e92766?auto=format&fit=crop&w=1200&q=80',
+  ),
+];
+
+const seedProviders = <Provider>[
+  Provider(
+    id: 1,
+    name: 'Nora Mba',
+    role: 'Développeuse front-end',
+    category: 'Design & Web',
+    rating: 4.9,
+    missions: 28,
+    price: 8000,
+    location: 'Nzeng-Ayong',
+    available: true,
+    image: 'https://images.unsplash.com/photo-1534751516642-a1af1ef26a56?auto=format&fit=crop&w=900&q=80',
+    cover: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80',
+    responseTime: '12 min',
+    successRate: 98,
+    headline: 'Sites vitrines, interfaces React et landing pages pour petits business gabonais.',
+    bio: 'Nora aide les petits commerces et associations à créer une présence web propre sans se perdre dans la technique.',
+    gallery: [
+      'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=900&q=80',
+      'https://images.unsplash.com/photo-1559028012-481c04fa702d?auto=format&fit=crop&w=900&q=80',
+    ],
+    reviews: [
+      Review(client: 'Nadya', rating: 5, text: 'Elle a livré une page claire pour mon salon de coiffure.'),
+      Review(client: 'Junior', rating: 5, text: 'Très bonne communication et design propre.'),
+    ],
+    skills: ['React', 'Landing page', 'Maquette'],
+  ),
+  Provider(
+    id: 2,
+    name: 'Cedric Aworet',
+    role: 'Technicien informatique',
+    category: 'Informatique',
+    rating: 4.8,
+    missions: 35,
+    price: 5000,
+    location: 'Louis',
+    available: true,
+    image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=900&q=80',
+    cover: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80',
+    responseTime: '8 min',
+    successRate: 96,
+    headline: 'Dépannage rapide à Libreville pour PC, logiciels, imprimantes et réseau wifi.',
+    bio: 'Cedric intervient surtout sur les urgences : ordinateur lent, installation, imprimante et wifi.',
+    gallery: [
+      'https://images.unsplash.com/photo-1581090700227-1e37b190418e?auto=format&fit=crop&w=900&q=80',
+    ],
+    reviews: [
+      Review(client: 'Kevin', rating: 5, text: 'Il a remis mon PC en état le même jour.'),
+    ],
+    skills: ['PC lent', 'Installation', 'Wifi'],
+  ),
+  Provider(
+    id: 3,
+    name: 'Sarah Kombila',
+    role: 'Coach scolaire',
+    category: 'Cours',
+    rating: 4.7,
+    missions: 19,
+    price: 6000,
+    location: 'Batterie IV',
+    available: false,
+    image: 'https://images.unsplash.com/photo-1499952127939-9bbf5af6c51c?auto=format&fit=crop&w=900&q=80',
+    cover: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80',
+    responseTime: '1 h',
+    successRate: 94,
+    headline: 'Soutien scolaire pour élèves et étudiants avant examens, exposés et devoirs.',
+    bio: 'Sarah accompagne les élèves avec une méthode calme : reprendre les bases, s’exercer et préparer les contrôles.',
+    reviews: [
+      Review(client: 'Linda', rating: 5, text: 'Elle m’a aidée à préparer mon oral.'),
+    ],
+    skills: ['Maths', 'Anglais', 'Révision'],
+  ),
+  Provider(
+    id: 4,
+    name: 'Jason Bouanga',
+    role: 'Livreur express',
+    category: 'Livraison',
+    rating: 4.6,
+    missions: 42,
+    price: 3000,
+    location: 'Akanda',
+    available: true,
+    image: 'https://images.unsplash.com/photo-1522556189639-b150ed9c4330?auto=format&fit=crop&w=900&q=80',
+    cover: 'https://images.unsplash.com/photo-1526367790999-0150786686a2?auto=format&fit=crop&w=1200&q=80',
+    responseTime: '15 min',
+    successRate: 97,
+    headline: 'Livraison de colis, courses et documents entre Akanda, Centre-ville et Owendo.',
+    bio: 'Jason gère les petites courses et livraisons urgentes avec confirmation du départ et de l’arrivée.',
+    reviews: [
+      Review(client: 'Mireille', rating: 5, text: 'Colis livré rapidement à Akanda.'),
+    ],
+    skills: ['Courses', 'Colis', 'Express'],
+  ),
+  Provider(
+    id: 5,
+    name: 'Maeva Rekangalt',
+    role: 'Designer freelance',
+    category: 'Design & Web',
+    rating: 4.8,
+    missions: 23,
+    price: 7000,
+    location: 'Glass',
+    available: true,
+    image: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=900&q=80',
+    cover: 'https://images.unsplash.com/photo-1558655146-9f40138edfeb?auto=format&fit=crop&w=1200&q=80',
+    responseTime: '20 min',
+    successRate: 95,
+    headline: 'Flyers, logos et visuels WhatsApp pour événements, commerces et associations.',
+    bio: 'Maeva crée des visuels qui parlent aux clients locaux : affiches, statuts WhatsApp, flyers et logos simples.',
+    gallery: [
+      'https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&w=900&q=80',
+    ],
+    reviews: [
+      Review(client: 'Mickael', rating: 5, text: 'Le flyer était propre et prêt pour WhatsApp.'),
+    ],
+    skills: ['Logo', 'Flyer', 'Canva'],
+  ),
+  Provider(
+    id: 6,
+    name: 'Yann Ondo',
+    role: 'Monteur vidéo',
+    category: 'Design & Web',
+    rating: 4.7,
+    missions: 17,
+    price: 9000,
+    location: 'Charbonnages',
+    available: true,
+    image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=900&q=80',
+    cover: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?auto=format&fit=crop&w=1200&q=80',
+    responseTime: '25 min',
+    successRate: 93,
+    headline: 'Vidéos courtes, reels, sous-titres et montages pour artistes et entrepreneurs.',
+    bio: 'Yann transforme des vidéos brutes en contenus courts pour TikTok, Instagram et WhatsApp.',
+    reviews: [
+      Review(client: 'Bryan', rating: 5, text: 'Le reel avait un rendu très dynamique.'),
+    ],
+    skills: ['Reels', 'Montage', 'Sous-titres'],
+  ),
+];
+
+const seedRequests = <ServiceRequest>[
+  ServiceRequest(
+    id: 101,
+    title: 'Installer Windows et Office',
+    category: 'Informatique',
+    budget: 10000,
+    location: 'PK12',
+    urgency: 'Demain',
+    status: 'Ouverte',
+    client: 'Kevin',
+    provider: 'En attente',
+    candidates: ['Cedric Aworet'],
+    description: 'Mon ordinateur a été formaté, je dois le rendre prêt pour les cours à l’UOB.',
+  ),
+  ServiceRequest(
+    id: 102,
+    title: 'Cours de soutien en anglais',
+    category: 'Cours',
+    budget: 15000,
+    location: 'Batterie IV',
+    urgency: 'Cette semaine',
+    status: 'En discussion',
+    client: 'Linda',
+    provider: 'Sarah Kombila',
+    candidates: ['Sarah Kombila'],
+    description: 'Besoin de deux séances pour préparer un exposé oral.',
+  ),
+  ServiceRequest(
+    id: 103,
+    title: 'Créer un flyer pour une activité',
+    category: 'Design & Web',
+    budget: 12000,
+    location: 'Glass',
+    urgency: 'Demain',
+    status: 'Confirmée',
+    client: 'Mickael',
+    provider: 'Maeva Rekangalt',
+    candidates: ['Maeva Rekangalt', 'Nora Mba'],
+    description: 'Besoin d’un visuel propre pour annoncer une rencontre étudiante.',
+  ),
+];
+
+const seedMessages = <Message>[
+  Message(
+    id: 1,
+    from: 'Cedric A.',
+    to: 'Kevin',
+    subject: 'Disponibilité dépannage PC',
+    text: 'Je peux passer après les cours pour installer Windows et les logiciels demandés.',
+  ),
+  Message(
+    id: 2,
+    from: 'Maeva R.',
+    to: 'Mickael',
+    subject: 'Flyer événement',
+    text: 'J’ai besoin du thème, des couleurs et du texte final pour livrer une première version.',
+  ),
+];

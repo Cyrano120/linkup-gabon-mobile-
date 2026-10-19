@@ -1,0 +1,46 @@
+rules_version = '2';
+
+// Règles Firestore communes aux trois applications (web, Expo, Flutter).
+// À déployer sur le projet Firebase `linkup-gabon`.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Prestataires : lecture publique, écriture réservée aux comptes connectés.
+    match /providers/{providerId} {
+      allow read: if true;
+      allow create: if isAuth() && request.resource.data.keys().hasAll(['name', 'role', 'price']);
+      allow update, delete: if isAuth();
+    }
+
+    // Missions : lecture publique, écriture réservée aux comptes connectés.
+    match /requests/{requestId} {
+      allow read: if true;
+      allow create: if isAuth() && request.resource.data.keys().hasAll(['title', 'budget', 'client']);
+      allow update, delete: if isAuth();
+    }
+
+    // Messagerie : réservée aux comptes connectés.
+    match /messages/{messageId} {
+      allow read, update, delete: if isAuth();
+      allow create: if isAuth() && request.resource.data.keys().hasAll(['from', 'subject', 'text']);
+    }
+
+    // Appareils (tokens de notification) : chaque utilisateur gère le sien.
+    match /devices/{userId} {
+      allow read, write: if isAuth() && isOwner(userId);
+    }
+
+    // Profil utilisateur.
+    match /users/{userId} {
+      allow read, write: if isAuth() && isOwner(userId);
+    }
+  }
+}
