@@ -29,6 +29,7 @@ flutter-app/*.iml
 .vscode/*
 !.vscode/extensions.json
 !.vscode/tasks.json
+!.vscode/launch.json
 *.iml
 
 # OS

@@ -1,0 +1,38 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flutter : TECNO CK6 (telephone)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/flutter-app",
+      "program": "lib/main.dart",
+      "deviceId": "082593728F000470",
+      "args": ["--dart-define-from-file=env.json"]
+    },
+    {
+      "name": "Flutter : Chrome (navigateur)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/flutter-app",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "args": ["--dart-define-from-file=env.json"]
+    },
+    {
+      "name": "Flutter : choisir l'appareil",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/flutter-app",
+      "program": "lib/main.dart",
+      "args": ["--dart-define-from-file=env.json"]
+    },
+    {
+      "name": "Flutter : tests",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/flutter-app",
+      "program": "test/widget_test.dart"
+    }
+  ]
+}
