@@ -9,7 +9,7 @@ Les trois applications (web, Expo, Flutter) partagent le projet Firebase **`link
 Console Firebase → **Authentication** → onglet **Sign-in method** :
 
 1. Activer **Email/Password**.
-2. (Optionnel) Désactiver « Email enumeration protection » pour des messages d'erreur plus explicites en développement.
+2. **Laisser « Email enumeration protection » ACTIVÉE** (réglage par défaut de Google). La désactiver permettrait à un attaquant de tester des adresses e-mail et de découvrir lesquelles possèdent un compte, puis de cibler ces comptes (hameçonnage, bourrage d'identifiants). Les messages d'erreur génériques sont le comportement à conserver, en développement comme en production.
 
 Les apps utilisent `createUserWithEmailAndPassword` + `updateProfile` (Expo) / `updateDisplayName` (Flutter).
 
@@ -64,7 +64,9 @@ Reporter les valeurs dans :
 
 ### Envoi distant via Cloud Function
 
-Les deux apps enregistrent l'appareil dans `devices/{uid}` et écoutent Firestore en local. Pour notifier même app fermée :
+Les deux apps enregistrent l'appareil dans `devices/{uid}` et écoutent Firestore en local. Pour notifier même app fermée, une Cloud Function doit cibler **uniquement les personnes concernées** — jamais l'ensemble des appareils, sous peine de notifier tout le monde de toutes les conversations.
+
+> **Prérequis** : les champs `toUid` (message) et `createdBy` (mission) doivent contenir des **UID Firebase**, pas des noms affichés. Voir la migration décrite dans `docs/RECHERCHE-SECURITE.md` (§7).
 
 ```js
 // functions/index.js
@@ -72,19 +74,58 @@ const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const admin = require('firebase-admin');
 admin.initializeApp();
 
-exports.notifyNewRequest = onDocumentCreated('requests/{id}', async (event) => {
-  const request = event.data.data();
-  const devices = await admin.firestore().collection('devices').get();
+const db = () => admin.firestore();
 
-  const targets = devices.docs
-    .filter((d) => d.data().userId !== request.createdBy)
-    .map((d) => d.data().token)
-    .filter(Boolean);
+/** Récupère les jetons d'une liste d'UID, par paquets de 10 (limite de l'opérateur `in`). */
+async function tokensFor(uids) {
+  const unique = [...new Set(uids.filter(Boolean))];
+  const tokens = [];
+  for (let i = 0; i < unique.length; i += 10) {
+    const snap = await db()
+      .collection('devices')
+      .where('userId', 'in', unique.slice(i, i + 10))
+      .get();
+    snap.docs.forEach((d) => {
+      const token = d.data().token;
+      if (token) tokens.push(token);
+    });
+  }
+  return tokens;
+}
 
-  if (!targets.length) return;
+// Nouveau message : on notifie UNIQUEMENT le destinataire.
+exports.notifyNewMessage = onDocumentCreated('messages/{id}', async (event) => {
+  const message = event.data.data();
+  const tokens = await tokensFor([message.toUid]);
+  if (!tokens.length) return;
 
   await admin.messaging().sendEachForMulticast({
-    tokens: targets,
+    tokens,
+    notification: { title: 'Nouveau message', body: message.subject || 'LinkUp' },
+    data: { url: '/messages' },
+  });
+});
+
+// Nouvelle mission : on notifie les prestataires de la MÊME catégorie,
+// plafonnés, en excluant l'auteur de la mission.
+exports.notifyNewRequest = onDocumentCreated('requests/{id}', async (event) => {
+  const request = event.data.data();
+
+  const providers = await db()
+    .collection('providers')
+    .where('category', '==', request.category)
+    .limit(50)
+    .get();
+
+  const uids = providers.docs
+    .map((d) => d.data().createdBy)
+    .filter((uid) => uid && uid !== request.createdBy);
+
+  const tokens = await tokensFor(uids);
+  if (!tokens.length) return;
+
+  await admin.messaging().sendEachForMulticast({
+    tokens,
     notification: { title: 'Nouvelle mission', body: request.title },
     data: { url: '/missions' },
   });

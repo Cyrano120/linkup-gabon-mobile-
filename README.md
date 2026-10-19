@@ -28,6 +28,7 @@ Une seule logique métier, deux stacks : **React Native + Expo** et **Flutter + 
 - [Notifications](#notifications)
 - [Modèle de données](#modèle-de-données)
 - [Qualité](#qualité)
+- [Veille et décisions](#veille-et-décisions)
 - [Feuille de route](#feuille-de-route)
 - [Licence](#licence)
 
@@ -298,6 +299,19 @@ Choix techniques notables :
 - **Sécurité** : dépôt multi-apps → un seul `firestore.rules` versionné, avec règle dédiée `devices/{userId}` (écriture limitée au propriétaire).
 - **Erreurs d'auth** : traduites depuis le code Firebase (`auth/...`) vers des phrases françaises, dans une table strictement identique côté Expo et côté Flutter.
 - **Données de démo** : amorçage et réinitialisation conditionnés à l'environnement de développement, car la base est partagée avec la production.
+
+---
+
+## Veille et décisions
+
+Trois veilles sourcées et une synthèse orientent la suite du produit :
+
+| Document | Contenu |
+|---|---|
+| [`docs/SYNTHESE.md`](docs/SYNTHESE.md) | **Synthèse et priorités fonctionnelles** — à lire en premier |
+| [`docs/RECHERCHE-DESIGN.md`](docs/RECHERCHE-DESIGN.md) | Design mobile, patterns UX, accessibilité, packages Flutter |
+| [`docs/RECHERCHE-CONCURRENCE.md`](docs/RECHERCHE-CONCURRENCE.md) | Marché gabonais, concurrents, monétisation, paiement |
+| [`docs/RECHERCHE-SECURITE.md`](docs/RECHERCHE-SECURITE.md) | Sécurité, règles Firestore prêtes à l'emploi, conformité APDPVP |
 
 ---
 
