@@ -15,6 +15,10 @@ android {
     // qui bloquait tout le build.
 
     compileOptions {
+        // Exigé par flutter_local_notifications : il utilise les API Java 8+
+        // (java.time) pour planifier des notifications, y compris sur des
+        // versions d'Android qui ne les fournissent pas nativement.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -28,6 +32,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Recommandé par flutter_local_notifications, qui pousse le nombre de
+        // méthodes au-delà de la limite d'un seul fichier DEX.
+        multiDexEnabled = true
     }
 
     buildTypes {
@@ -37,6 +44,11 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+}
+
+dependencies {
+    // Implémentation des API Java 8+ utilisées par flutter_local_notifications.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
 
 kotlin {
