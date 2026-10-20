@@ -71,6 +71,13 @@ sont **conservés** : les interfaces continuent de fonctionner sans refonte.
 > Les règles ne peuvent pas s'appuyer dessus. On ajoute donc `candidateUids`
 > pour le contrôle d'accès, sans toucher à l'affichage existant.
 
+> **Vocabulaire imposé.** `status` vaut exactement `Ouverte`,
+> `En discussion`, `Confirmée` ou `Terminée` ; `urgency` vaut exactement
+> `Aujourd'hui`, `Demain`, `Cette semaine` ou `Flexible`. **Les accents sont
+> significatifs** : `Confirmee` sans accent est refusé par les règles.
+> Le site utilisait `Urgent` et `Confirmee` dans son jeu de démonstration ;
+> c'est corrigé.
+
 ### `messages/{messageId}`
 
 | Champ | Type | Rôle |
@@ -192,6 +199,29 @@ firebase deploy --only firestore:rules   # depuis un commit antérieur
 
 Les règles sont un fichier unique, le retour arrière est immédiat et sans
 perte de données.
+
+### État au 20 octobre 2026
+
+| Étape | État |
+|---|---|
+| 1. Les trois applications écrivent les nouveaux champs | ✅ web, Expo, Flutter |
+| 2. Migration des documents existants | ✅ sans objet : la base ne contenait que 16 documents de démonstration, supprimés |
+| 3. Règles et index déployés | ✅ `linkup-gabon` |
+| 4. Vérification en production | ⏳ réamorçage à déclencher par une connexion |
+| 5. Vérification d'e-mail, App Check | ⏳ |
+
+Le réamorçage est automatique : à la première connexion, l'application
+constate que `providers` est vide et réinjecte les données de démonstration,
+cette fois avec `createdBy`, `clientUid` et `candidateUids`. Les messages ne
+sont pas réamorcés : une conversation privée exige deux comptes réels.
+
+Vérifié en production après déploiement :
+
+| Contrôle | Résultat |
+|---|---|
+| Lecture publique des prestataires | 200 |
+| Écriture anonyme sur `providers` | 403 `PERMISSION_DENIED` |
+| Lecture anonyme de `messages` | 403 `PERMISSION_DENIED` |
 
 ---
 
