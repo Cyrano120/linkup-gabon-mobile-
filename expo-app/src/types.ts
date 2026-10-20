@@ -30,8 +30,11 @@ export interface Provider {
   gallery: string[];
   reviews: Review[];
   skills: string[];
+  /** Auteur du document, estampillé par la couche Firestore. */
   createdBy?: string;
+  ownerUid?: string;
   createdAt?: number;
+  updatedAt?: number;
 }
 
 export interface ServiceRequest {
@@ -47,19 +50,36 @@ export interface ServiceRequest {
   provider: string;
   candidates: string[];
   description: string;
+  /** Auteur du document, estampillé par la couche Firestore. */
   createdBy?: string;
+  /** Client auteur de la mission (immuable). */
+  clientUid?: string;
+  /** Prestataire retenu, autorisé à faire évoluer la mission. */
+  providerUid?: string;
+  /** Candidats positionnés, alignés sur `candidates`. */
+  candidateUids?: string[];
   createdAt?: number;
+  updatedAt?: number;
 }
 
 export interface Message {
   _firestoreId?: string;
   id: number;
+  /** Nom affiché de l'expéditeur. */
   from: string;
+  /** Nom affiché du destinataire. */
   to: string;
   subject: string;
   text: string;
+  /** Auteur du document, estampillé par la couche Firestore. */
   createdBy?: string;
+  fromUid?: string;
+  toUid?: string;
+  /** `[fromUid, toUid]` — contrôle d'accès et clé de requête. */
+  participants?: string[];
   createdAt?: number;
+  updatedAt?: number;
+  readAt?: number;
 }
 
 export interface NewRequestInput {
@@ -80,4 +100,13 @@ export interface NewProviderInput {
   location: string;
   headline: string;
   skills: string[];
+}
+
+export interface NewMessageInput {
+  from: string;
+  to: string;
+  /** UID réel du destinataire : indispensable à une conversation privée. */
+  toUid: string;
+  subject: string;
+  text: string;
 }

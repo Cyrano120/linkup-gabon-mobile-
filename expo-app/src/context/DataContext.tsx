@@ -8,9 +8,16 @@ import React, {
   useState,
 } from 'react';
 
-import { initialMessages, initialProviders, initialRequests } from '../data';
+import { initialProviders, initialRequests } from '../data';
 import { isDemoDataEnabled } from '../lib/demoData';
-import { addDocument, clearCollection, seedCollection, subscribeToCollection, updateDocument } from '../lib/firestore';
+import {
+  addDocument,
+  clearCollection,
+  seedCollection,
+  subscribeToCollection,
+  subscribeToMessages,
+  updateDocument,
+} from '../lib/firestore';
 import { presentLocalNotification } from '../lib/notifications';
 import type { Message, NewProviderInput, NewRequestInput, Provider, ServiceRequest } from '../types';
 import { useAuth } from './AuthContext';
@@ -26,7 +33,13 @@ interface DataContextValue {
   updateRequestStatus: (firestoreId: string | undefined, status: ServiceRequest['status']) => Promise<void>;
   applyToMission: (request: ServiceRequest, providerName: string) => Promise<void>;
   acceptCandidate: (request: ServiceRequest, providerName: string) => Promise<void>;
-  sendMessage: (input: Omit<Message, 'id'>) => Promise<void>;
+  sendMessage: (input: {
+    from: string;
+    to: string;
+    toUid: string;
+    subject: string;
+    text: string;
+  }) => Promise<void>;
   resetDemoData: () => Promise<void>;
 }
 
@@ -60,12 +73,22 @@ function DataProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const seedInitialData = useCallback(async () => {
+    const uid = user?.uid;
+    // Une mission amorcée doit porter un client identifiable.
+    const requests = (initialRequests as unknown as Record<string, unknown>[]).map((item) => ({
+      ...item,
+      clientUid: uid,
+      candidateUids: [],
+    }));
+
+    // Les messages ne sont plus amorcés : une conversation privée exige deux
+    // comptes réels. Inventer des participants produirait des documents
+    // illisibles, refusés par les règles de sécurité.
     await Promise.all([
       seedCollection('providers', initialProviders as unknown as Record<string, unknown>[]),
-      seedCollection('requests', initialRequests as unknown as Record<string, unknown>[]),
-      seedCollection('messages', initialMessages as unknown as Record<string, unknown>[]),
+      seedCollection('requests', requests),
     ]);
-  }, []);
+  }, [user?.uid]);
 
   useEffect(() => {
     // Aucun compte : rien à écouter. L'état est déjà vierge, car <DataScope>
@@ -103,13 +126,15 @@ function DataProvider({ children }: { children: React.ReactNode }) {
       setRequests(next);
     });
 
-    const unsubMessages = subscribeToCollection('messages', (rows) => {
+    // Le flux ne contient déjà que mes conversations : le filtrage est fait par
+    // la requête (`participants array-contains`), donc aussi par les règles.
+    const unsubMessages = subscribeToMessages(user.uid, (rows) => {
       const next = rows as unknown as Message[];
       if (loadedRef.current.messages) {
         for (const item of next) {
           if (!seenRef.current.messages.has(item._firestoreId)) {
             seenRef.current.messages.add(item._firestoreId);
-            if (item.createdBy && item.createdBy !== userIdRef.current) {
+            if (item.fromUid && item.fromUid !== userIdRef.current) {
               presentLocalNotification(`Message de ${item.from}`, item.subject || item.text).catch(
                 () => {},
               );
@@ -138,7 +163,8 @@ function DataProvider({ children }: { children: React.ReactNode }) {
         status: 'Ouverte',
         provider: 'En attente',
         candidates: [],
-        createdBy: user?.uid ?? null,
+        candidateUids: [],
+        clientUid: user?.uid,
       });
     },
     [user?.uid],
@@ -159,31 +185,43 @@ function DataProvider({ children }: { children: React.ReactNode }) {
         bio: input.headline,
         gallery: [],
         reviews: [],
-        createdBy: user?.uid ?? null,
       });
     },
-    [user?.uid],
+    [],
   );
 
   const bookProvider = useCallback(
     async (provider: Provider, input: NewRequestInput) => {
+      const uid = user?.uid;
+      const providerUid = provider.createdBy;
+
       await addDocument('requests', {
         ...input,
         id: Date.now(),
         category: provider.category,
         provider: provider.name,
         candidates: [],
+        candidateUids: [],
         status: 'En discussion',
-        createdBy: user?.uid ?? null,
+        clientUid: uid,
+        ...(providerUid ? { providerUid } : {}),
       });
-      await addDocument('messages', {
-        id: Date.now() + 1,
-        from: input.client,
-        to: provider.name,
-        subject: input.title,
-        text: `Nouvelle demande pour ${provider.name}.`,
-        createdBy: user?.uid ?? null,
-      });
+
+      // Conversation privée : seulement si le prestataire a un compte réel et
+      // si ce n'est pas l'utilisateur lui-même. Sinon on n'écrit pas de message
+      // fantôme que personne ne pourrait lire.
+      if (uid && providerUid && providerUid !== uid) {
+        await addDocument('messages', {
+          id: Date.now() + 1,
+          from: input.client,
+          to: provider.name,
+          subject: input.title,
+          text: `Nouvelle demande pour ${provider.name}.`,
+          fromUid: uid,
+          toUid: providerUid,
+          participants: [uid, providerUid],
+        });
+      }
     },
     [user?.uid],
   );
@@ -196,41 +234,85 @@ function DataProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const applyToMission = useCallback(async (request: ServiceRequest, providerName: string) => {
-    if (!request._firestoreId || !providerName) return;
-    const candidates = request.candidates ?? [];
-    if (candidates.includes(providerName)) return;
-    await updateDocument('requests', request._firestoreId, {
-      candidates: [...candidates, providerName],
-      status: request.status === 'Ouverte' ? 'En discussion' : request.status,
-    });
-  }, []);
+  const applyToMission = useCallback(
+    async (request: ServiceRequest, providerName: string) => {
+      if (!request._firestoreId || !providerName) return;
+      const candidates = request.candidates ?? [];
+      if (candidates.includes(providerName)) return;
+
+      // `candidates` et `candidateUids` restent alignés : l'index du nom donne
+      // l'index de l'UID, ce qui permet de retrouver le candidat retenu.
+      const candidateUids = [...(request.candidateUids ?? [])];
+      const candidateUid = providers.find((p) => p.name === providerName)?.createdBy;
+      if (candidateUid && !candidateUids.includes(candidateUid)) {
+        candidateUids.push(candidateUid);
+      }
+
+      await updateDocument('requests', request._firestoreId, {
+        candidates: [...candidates, providerName],
+        candidateUids,
+        status: request.status === 'Ouverte' ? 'En discussion' : request.status,
+      });
+    },
+    [providers],
+  );
 
   const acceptCandidate = useCallback(
     async (request: ServiceRequest, providerName: string) => {
       if (!request._firestoreId) return;
+      const uid = user?.uid;
+
+      const index = (request.candidates ?? []).indexOf(providerName);
+      const fromList =
+        index >= 0 && index < (request.candidateUids?.length ?? 0)
+          ? request.candidateUids![index]
+          : undefined;
+      const providerUid = fromList ?? providers.find((p) => p.name === providerName)?.createdBy;
+
       await updateDocument('requests', request._firestoreId, {
         provider: providerName,
         status: 'Confirmée',
+        ...(providerUid ? { providerUid } : {}),
       });
-      await addDocument('messages', {
-        id: Date.now(),
-        from: 'LinkUp',
-        to: providerName,
-        subject: 'Mission confirmée',
-        text: `${providerName} a été retenu pour « ${request.title} ».`,
-        createdBy: user?.uid ?? null,
-      });
+
+      if (uid && providerUid && providerUid !== uid) {
+        await addDocument('messages', {
+          id: Date.now(),
+          from: 'LinkUp',
+          to: providerName,
+          subject: 'Mission confirmée',
+          text: `${providerName} a été retenu pour « ${request.title} ».`,
+          fromUid: uid,
+          toUid: providerUid,
+          participants: [uid, providerUid],
+        });
+      }
     },
-    [user?.uid],
+    [providers, user?.uid],
   );
 
   const sendMessage = useCallback(
-    async (input: Omit<Message, 'id'>) => {
+    async (input: {
+      from: string;
+      to: string;
+      toUid: string;
+      subject: string;
+      text: string;
+    }) => {
+      const uid = user?.uid;
+      if (!uid) throw new Error('Connecte-toi pour envoyer un message.');
+      if (!input.toUid) throw new Error('Choisis un destinataire.');
+      if (input.toUid === uid) throw new Error('Tu ne peux pas t’écrire à toi-même.');
+
       await addDocument('messages', {
-        ...input,
         id: Date.now(),
-        createdBy: user?.uid ?? null,
+        from: input.from,
+        to: input.to,
+        subject: input.subject,
+        text: input.text,
+        fromUid: uid,
+        toUid: input.toUid,
+        participants: [uid, input.toUid],
       });
     },
     [user?.uid],

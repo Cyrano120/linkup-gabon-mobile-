@@ -7,41 +7,65 @@ import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { colors, radius, spacing } from '../../theme';
+import type { Provider } from '../../types';
 
 type Box = 'Tous' | 'Reçus' | 'Envoyés';
 
 export default function MessagesScreen() {
   const { user } = useAuth();
-  const { messages, sendMessage } = useData();
+  const { messages, providers, sendMessage } = useData();
   const toast = useToast();
 
   const displayName = user?.displayName || user?.email?.split('@')[0] || 'Client';
+  const uid = user?.uid;
 
   const [box, setBox] = useState<Box>('Tous');
   const [composing, setComposing] = useState(false);
-  const [to, setTo] = useState('');
+
+  /**
+   * Destinataire réel : on choisit un prestataire, pas un nom libre.
+   * Un message privé exige un UID de destinataire ; laisser saisir un nom
+   * produirait des messages que personne ne pourrait lire.
+   */
+  const [recipient, setRecipient] = useState<Provider | null>(null);
+
   const [subject, setSubject] = useState('');
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Le flux ne contient déjà que mes conversations ; ces filtres ne font que
+  // séparer les reçus des envoyés, désormais sur l'identité et non sur le nom.
   const filtered = useMemo(() => {
-    if (box === 'Reçus') return messages.filter((m) => m.to === displayName);
-    if (box === 'Envoyés') return messages.filter((m) => m.from === displayName);
+    if (box === 'Reçus') return messages.filter((m) => m.toUid === uid);
+    if (box === 'Envoyés') return messages.filter((m) => m.fromUid === uid);
     return messages;
-  }, [messages, box, displayName]);
+  }, [messages, box, uid]);
 
   async function submit() {
     setError('');
-    if (!to || !subject || !text) {
-      setError('Renseigne le destinataire, l’objet et le message.');
+    if (!recipient || !subject || !text) {
+      setError('Choisis un destinataire, puis renseigne l’objet et le message.');
       return;
     }
+    if (!recipient.createdBy) {
+      setError(
+        'Cette vitrine n’a pas de compte associé : impossible de lui écrire en privé.',
+      );
+      return;
+    }
+
     setLoading(true);
     try {
-      await sendMessage({ from: displayName, to, subject, text });
+      await sendMessage({
+        from: displayName,
+        to: recipient.name,
+        toUid: recipient.createdBy,
+        subject,
+        text,
+      });
       toast.show('Message envoyé.');
-      setTo('');
+      setRecipient(null);
       setSubject('');
       setText('');
       setComposing(false);
@@ -79,7 +103,25 @@ export default function MessagesScreen() {
               <Text style={styles.errorText}>{error}</Text>
             </View>
           ) : null}
-          <Field label="Destinataire" value={to} onChangeText={setTo} placeholder="Nom du prestataire" />
+
+          <Text style={styles.fieldLabel}>Destinataire</Text>
+          {providers.length === 0 ? (
+            <Text style={styles.hint}>
+              Aucun prestataire disponible pour l’instant.
+            </Text>
+          ) : (
+            <View style={styles.chipRow}>
+              {providers.map((provider) => (
+                <Chip
+                  key={provider._firestoreId ?? provider.id}
+                  label={provider.createdBy ? provider.name : `${provider.name} (sans compte)`}
+                  active={recipient?.id === provider.id}
+                  onPress={() => setRecipient(provider)}
+                />
+              ))}
+            </View>
+          )}
+
           <Field label="Objet" value={subject} onChangeText={setSubject} placeholder="Ex : Mission depannage PC" />
           <Field
             label="Message"
@@ -107,7 +149,7 @@ export default function MessagesScreen() {
         />
       ) : (
         filtered.map((message) => {
-          const isIncoming = message.to === displayName;
+          const isIncoming = message.toUid === uid;
           return (
             <Card key={message._firestoreId ?? message.id} style={styles.messageCard}>
               <View style={styles.messageHeader}>
@@ -141,6 +183,9 @@ const styles = StyleSheet.create({
   title: { color: colors.white, fontWeight: '900', fontSize: 24, marginTop: 2 },
   subtitle: { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: spacing.xs, lineHeight: 19 },
   boxRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
+  fieldLabel: { color: colors.muted, fontWeight: '700', fontSize: 12, marginBottom: spacing.sm },
+  hint: { color: colors.muted, fontSize: 13, marginBottom: spacing.md },
   messageCard: { marginBottom: spacing.md },
   messageHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   subject: { color: colors.ink, fontWeight: '800', fontSize: 15 },

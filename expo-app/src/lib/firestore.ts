@@ -5,11 +5,14 @@ import {
   doc,
   getDocs,
   onSnapshot,
+  orderBy,
+  query,
   serverTimestamp,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 
-import { requireDb } from './firebase';
+import { requireAuth, requireDb } from './firebase';
 
 export type CollectionName = 'providers' | 'requests' | 'messages' | 'devices';
 
@@ -39,10 +42,52 @@ export function subscribeToCollection(
   );
 }
 
+/**
+ * Conversations de l'utilisateur connecté, et **seulement** les siennes.
+ *
+ * La requête filtre sur `participants` : les règles Firestore refusent toute
+ * lecture globale de la collection. L'index composite
+ * `participants (array-contains) + id (desc)` est déclaré dans
+ * `firestore.indexes.json`.
+ */
+export function subscribeToMessages(
+  uid: string,
+  onChange: (rows: Doc[]) => void,
+): () => void {
+  const db = requireDb();
+  const ref = query(
+    collection(db, 'messages'),
+    where('participants', 'array-contains', uid),
+    orderBy('id', 'desc'),
+  );
+  return onSnapshot(
+    ref,
+    (snapshot) => {
+      const rows: Doc[] = snapshot.docs.map((d) => ({ ...(d.data() as Doc), _firestoreId: d.id }));
+      onChange(rows);
+    },
+    (error) => {
+      console.warn('[firestore] subscribe messages error', error?.message);
+      onChange([]);
+    },
+  );
+}
+
+/**
+ * Ajoute un document en estampillant l'auteur.
+ *
+ * L'identité vient toujours du compte connecté, jamais des données fournies
+ * par l'appelant : un écran ne peut donc pas écrire au nom d'un autre.
+ */
 export async function addDocument(name: CollectionName, data: Doc): Promise<string> {
   const db = requireDb();
   const { _firestoreId: _ignored, ...payload } = data;
-  const ref = await addDoc(collection(db, name), { ...payload, createdAt: Date.now() });
+  const uid = requireAuth().currentUser?.uid;
+  const ref = await addDoc(collection(db, name), {
+    ...payload,
+    ...(uid ? { createdBy: uid } : {}),
+    createdAt: Date.now(),
+  });
   return ref.id;
 }
 
