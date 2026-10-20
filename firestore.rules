@@ -53,11 +53,10 @@ service cloud.firestore {
       return request.auth.uid;
     }
 
-    // Adresse e-mail vérifiée. Disponible pour activer la vérification
-    // obligatoire lors d'une étape ultérieure.
-    function isVerified() {
-      return isSignedIn() && request.auth.token.email_verified == true;
-    }
+    // La vérification d'e-mail obligatoire s'activera plus tard en ajoutant
+    // `request.auth.token.email_verified == true` aux règles d'écriture.
+    // Fonction volontairement absente tant qu'elle n'est pas utilisée : le
+    // compilateur signale les fonctions mortes.
 
     function incoming() {
       return request.resource.data;
