@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:provider/provider.dart' hide Provider;
 
 import '../core/theme.dart';
+import '../models/provider.dart';
 import '../state/auth_controller.dart';
 import '../state/data_controller.dart';
 import '../widgets/ui.dart';
@@ -14,9 +15,13 @@ class MessagesScreen extends StatefulWidget {
 }
 
 class _MessagesScreenState extends State<MessagesScreen> {
-  final _to = TextEditingController();
   final _subject = TextEditingController();
   final _text = TextEditingController();
+
+  /// Destinataire réel : on choisit un prestataire, pas un nom libre.
+  /// Un message privé exige un UID de destinataire ; laisser saisir un nom
+  /// produirait des messages que personne ne pourrait lire.
+  Provider? _recipient;
 
   String _box = 'Tous';
   bool _composing = false;
@@ -25,17 +30,31 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
   @override
   void dispose() {
-    _to.dispose();
     _subject.dispose();
     _text.dispose();
     super.dispose();
   }
 
   Future<void> _submit(String from) async {
-    if (_to.text.trim().isEmpty || _subject.text.trim().isEmpty || _text.text.trim().isEmpty) {
-      setState(() => _error = 'Renseigne le destinataire, l’objet et le message.');
+    final recipient = _recipient;
+    if (recipient == null ||
+        _subject.text.trim().isEmpty ||
+        _text.text.trim().isEmpty) {
+      setState(
+        () => _error = 'Choisis un destinataire, puis renseigne l’objet et le message.',
+      );
       return;
     }
+
+    final toUid = recipient.createdBy;
+    if (toUid == null || toUid.isEmpty) {
+      setState(
+        () => _error =
+            'Cette vitrine n’a pas de compte associé : impossible de lui écrire en privé.',
+      );
+      return;
+    }
+
     setState(() {
       _error = null;
       _loading = true;
@@ -43,7 +62,8 @@ class _MessagesScreenState extends State<MessagesScreen> {
     try {
       await context.read<DataController>().sendMessage(
             from: from,
-            to: _to.text.trim(),
+            to: recipient.name,
+            toUid: toUid,
             subject: _subject.text.trim(),
             text: _text.text.trim(),
           );
@@ -51,8 +71,8 @@ class _MessagesScreenState extends State<MessagesScreen> {
       setState(() {
         _loading = false;
         _composing = false;
+        _recipient = null;
       });
-      _to.clear();
       _subject.clear();
       _text.clear();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -72,10 +92,13 @@ class _MessagesScreenState extends State<MessagesScreen> {
     final auth = context.watch<AuthController>();
     final data = context.watch<DataController>();
     final me = auth.displayName;
+    final uid = auth.user?.uid;
 
+    // Le flux ne contient déjà que mes conversations ; ces filtres ne font que
+    // séparer les reçus des envoyés, désormais sur l'identité et non sur le nom.
     final filtered = switch (_box) {
-      'Reçus' => data.messages.where((m) => m.to == me).toList(),
-      'Envoyés' => data.messages.where((m) => m.from == me).toList(),
+      'Reçus' => data.messages.where((m) => m.toUid == uid).toList(),
+      'Envoyés' => data.messages.where((m) => m.fromUid == uid).toList(),
       _ => data.messages,
     };
 
@@ -141,7 +164,19 @@ class _MessagesScreenState extends State<MessagesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (_error != null) ErrorNote(message: _error!),
-                  AppTextField(label: 'Destinataire', controller: _to, hint: 'Nom du prestataire'),
+                  AppDropdown<Provider>(
+                    label: 'Destinataire',
+                    value: _recipient,
+                    items: data.providers,
+                    isEnabled: data.providers.isNotEmpty,
+                    hint: data.providers.isEmpty
+                        ? 'Aucun prestataire disponible'
+                        : 'Choisir un prestataire',
+                    labelOf: (provider) => provider.createdBy == null
+                        ? '${provider.name} (sans compte)'
+                        : provider.name,
+                    onChanged: (provider) => setState(() => _recipient = provider),
+                  ),
                   AppTextField(label: 'Objet', controller: _subject, hint: 'Ex : Mission depannage PC'),
                   AppTextField(
                     label: 'Message',
@@ -183,7 +218,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
             )
           else
             ...filtered.map((message) {
-              final incoming = message.to == me;
+              final incoming = message.toUid == uid;
               return GlassCard(
                 margin: const EdgeInsets.only(bottom: AppSpacing.md),
                 child: Column(

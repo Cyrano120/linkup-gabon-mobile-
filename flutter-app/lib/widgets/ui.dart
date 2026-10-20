@@ -217,6 +217,101 @@ class AppTextField extends StatelessWidget {
   }
 }
 
+/// Liste déroulante au style d'`AppTextField`.
+///
+/// On utilise `DropdownButton` dans un `InputDecorator` plutôt que
+/// `DropdownButtonFormField` : le premier garde une API stable et permet de
+/// contrôler la valeur depuis le parent, sans dépendre du cycle de vie du champ.
+class AppDropdown<T> extends StatelessWidget {
+  const AppDropdown({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+    required this.labelOf,
+    this.hint,
+    this.isEnabled = true,
+  });
+
+  final String label;
+  final T? value;
+  final List<T> items;
+  final ValueChanged<T?> onChanged;
+  final String Function(T item) labelOf;
+  final String? hint;
+  final bool isEnabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFFD1D5DB),
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        InputDecorator(
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.xs,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              borderSide: const BorderSide(color: GabonColors.line),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              borderSide: const BorderSide(color: GabonColors.line),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              borderSide: const BorderSide(color: GabonColors.green, width: 1.5),
+            ),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<T>(
+              value: value,
+              isExpanded: true,
+              isDense: true,
+              hint: hint == null
+                  ? null
+                  : Text(
+                      hint!,
+                      style: const TextStyle(color: Color(0xFF9AA3AF), fontSize: 15),
+                    ),
+              icon: const Icon(Icons.expand_more, color: GabonColors.muted),
+              style: const TextStyle(color: GabonColors.ink, fontSize: 15),
+              items: items
+                  .map(
+                    (item) => DropdownMenuItem<T>(
+                      value: item,
+                      child: Text(
+                        labelOf(item),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: isEnabled ? onChanged : null,
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+      ],
+    );
+  }
+}
+
 /// Puce sélectionnable (filtres, catégories, statuts).
 class Pill extends StatelessWidget {
   const Pill({

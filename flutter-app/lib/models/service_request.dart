@@ -1,3 +1,15 @@
+/// Mission publiée par un client.
+///
+/// Les champs d'affichage (`client`, `provider`, `candidates`) contiennent des
+/// **noms**. Les champs `*Uid` portent l'identité réelle et servent au contrôle
+/// d'accès Firestore :
+/// - `clientUid` : auteur de la mission, immuable ;
+/// - `providerUid` : prestataire retenu, autorisé à faire évoluer la mission ;
+/// - `candidateUids` : candidats positionnés, autorisés à modifier la mission.
+///
+/// `candidates` et `candidateUids` sont maintenus **en parallèle** : même ordre,
+/// même longueur. L'index d'un nom dans `candidates` donne son UID dans
+/// `candidateUids`.
 class ServiceRequest {
   const ServiceRequest({
     this.firestoreId,
@@ -13,6 +25,9 @@ class ServiceRequest {
     this.candidates = const [],
     required this.description,
     this.createdBy,
+    this.clientUid,
+    this.providerUid,
+    this.candidateUids = const [],
   });
 
   final String? firestoreId;
@@ -27,7 +42,19 @@ class ServiceRequest {
   final String provider;
   final List<String> candidates;
   final String description;
+
+  /// Auteur du document (injecté par le service, jamais saisi).
   final String? createdBy;
+  final String? clientUid;
+  final String? providerUid;
+  final List<String> candidateUids;
+
+  /// UID du candidat correspondant à [providerName], si connu.
+  String? uidForCandidate(String providerName) {
+    final index = candidates.indexOf(providerName);
+    if (index < 0 || index >= candidateUids.length) return null;
+    return candidateUids[index];
+  }
 
   factory ServiceRequest.fromMap(String docId, Map<String, dynamic> map) => ServiceRequest(
         firestoreId: docId,
@@ -45,6 +72,11 @@ class ServiceRequest {
             .toList(),
         description: (map['description'] ?? '').toString(),
         createdBy: map['createdBy']?.toString(),
+        clientUid: map['clientUid']?.toString(),
+        providerUid: map['providerUid']?.toString(),
+        candidateUids: (map['candidateUids'] as List<dynamic>? ?? const [])
+            .map((e) => e.toString())
+            .toList(),
       );
 
   Map<String, dynamic> toMap() => {
@@ -59,5 +91,8 @@ class ServiceRequest {
         'provider': provider,
         'candidates': candidates,
         'description': description,
+        if (clientUid != null) 'clientUid': clientUid,
+        if (providerUid != null) 'providerUid': providerUid,
+        'candidateUids': candidateUids,
       };
 }

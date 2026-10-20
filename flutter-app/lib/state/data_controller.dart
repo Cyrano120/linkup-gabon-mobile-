@@ -114,14 +114,17 @@ class DataController extends ChangeNotifier {
       notifyListeners();
     });
 
+    // Le flux ne contient déjà que les conversations de l'utilisateur : le
+    // filtrage est fait par la requête (`participants array-contains`), donc
+    // aussi par les règles de sécurité.
     _messagesSub = FirestoreService.messagesStream().listen((list) {
       if (_loadedMessages) {
         for (final message in list) {
           final id = message.firestoreId;
           if (id != null &&
               _seenMessages.add(id) &&
-              message.createdBy != null &&
-              message.createdBy != _uid) {
+              message.fromUid != null &&
+              message.fromUid != _uid) {
             unawaited(
               NotificationService.show('Message de ${message.from}', message.subject),
             );
@@ -144,11 +147,16 @@ class DataController extends ChangeNotifier {
         await FirestoreService.addDocument('providers', provider.toMap());
       }
       for (final request in seedRequests) {
-        await FirestoreService.addDocument('requests', request.toMap());
+        await FirestoreService.addDocument('requests', {
+          ...request.toMap(),
+          'clientUid': _uid,
+          'candidateUids': <String>[],
+        });
       }
-      for (final message in seedMessages) {
-        await FirestoreService.addDocument('messages', message.toMap());
-      }
+      // Les messages de démonstration ne sont plus amorcés.
+      // Une conversation privée exige deux comptes réels : `toUid` doit être
+      // un UID existant, différent de l'expéditeur. Inventer des participants
+      // produirait des documents illisibles et refusés par les règles.
     } catch (error) {
       debugPrint('Seed impossible : $error');
     }
@@ -157,6 +165,18 @@ class DataController extends ChangeNotifier {
   // ---------------------------------------------------------------------------
   // Actions métier
   // ---------------------------------------------------------------------------
+
+  /// Retrouve l'UID d'un prestataire d'après son nom affiché.
+  ///
+  /// Limite connue : deux vitrines peuvent porter le même nom ; on retient la
+  /// première correspondance. Les écrans qui disposent de l'objet `Provider`
+  /// doivent préférer `provider.createdBy`.
+  String? _uidForProviderName(String name) {
+    for (final provider in _providers) {
+      if (provider.name == name) return provider.createdBy;
+    }
+    return null;
+  }
 
   Future<void> addRequest({
     required String client,
@@ -178,8 +198,9 @@ class DataController extends ChangeNotifier {
       'client': client,
       'provider': 'En attente',
       'candidates': <String>[],
+      'candidateUids': <String>[],
       'description': description,
-      'createdBy': _uid,
+      'clientUid': _uid,
     });
   }
 
@@ -213,7 +234,6 @@ class DataController extends ChangeNotifier {
       'gallery': <String>[],
       'reviews': <Map<String, dynamic>>[],
       'skills': skills,
-      'createdBy': _uid,
     });
   }
 
@@ -226,6 +246,9 @@ class DataController extends ChangeNotifier {
     required String urgency,
     required String description,
   }) async {
+    final clientUid = _uid;
+    final providerUid = provider.createdBy;
+
     await FirestoreService.addDocument('requests', {
       'id': DateTime.now().millisecondsSinceEpoch,
       'title': title,
@@ -237,17 +260,27 @@ class DataController extends ChangeNotifier {
       'client': client,
       'provider': provider.name,
       'candidates': <String>[],
+      'candidateUids': <String>[],
       'description': description,
-      'createdBy': _uid,
+      'clientUid': clientUid,
+      'providerUid': ?providerUid,
     });
-    await FirestoreService.addDocument('messages', {
-      'id': DateTime.now().millisecondsSinceEpoch + 1,
-      'from': client,
-      'to': provider.name,
-      'subject': title,
-      'text': 'Nouvelle demande pour ${provider.name}.',
-      'createdBy': _uid,
-    });
+
+    // Conversation privée : possible uniquement si la vitrine a un auteur
+    // identifiable et si ce n'est pas l'utilisateur lui-même. Sinon on
+    // n'écrit pas de message fantôme que personne ne pourrait lire.
+    if (clientUid != null && providerUid != null && providerUid != clientUid) {
+      await FirestoreService.addDocument('messages', {
+        'id': DateTime.now().millisecondsSinceEpoch + 1,
+        'from': client,
+        'to': provider.name,
+        'subject': title,
+        'text': 'Nouvelle demande pour ${provider.name}.',
+        'fromUid': clientUid,
+        'toUid': providerUid,
+        'participants': <String>[clientUid, providerUid],
+      });
+    }
   }
 
   Future<void> updateRequestStatus(ServiceRequest request, String status) {
@@ -260,8 +293,18 @@ class DataController extends ChangeNotifier {
     final id = request.firestoreId;
     if (id == null || providerName.isEmpty) return Future<void>.value();
     if (request.candidates.contains(providerName)) return Future<void>.value();
+
+    // `candidates` et `candidateUids` restent alignés : l'index du nom donne
+    // l'index de l'UID, ce qui permet de retrouver le candidat retenu.
+    final candidateUid = _uidForProviderName(providerName);
+    final uids = [...request.candidateUids];
+    if (candidateUid != null && !uids.contains(candidateUid)) {
+      uids.add(candidateUid);
+    }
+
     return FirestoreService.updateDocument('requests', id, {
       'candidates': [...request.candidates, providerName],
+      'candidateUids': uids,
       'status': request.status == 'Ouverte' ? 'En discussion' : request.status,
     });
   }
@@ -269,33 +312,58 @@ class DataController extends ChangeNotifier {
   Future<void> acceptCandidate(ServiceRequest request, String providerName) async {
     final id = request.firestoreId;
     if (id == null) return;
+
+    final clientUid = _uid;
+    final providerUid =
+        request.uidForCandidate(providerName) ?? _uidForProviderName(providerName);
+
     await FirestoreService.updateDocument('requests', id, {
       'provider': providerName,
       'status': 'Confirmée',
+      'providerUid': ?providerUid,
     });
-    await FirestoreService.addDocument('messages', {
-      'id': DateTime.now().millisecondsSinceEpoch,
-      'from': 'LinkUp',
-      'to': providerName,
-      'subject': 'Mission confirmée',
-      'text': '$providerName a été retenu pour « ${request.title} ».',
-      'createdBy': _uid,
-    });
+
+    if (clientUid != null && providerUid != null && providerUid != clientUid) {
+      await FirestoreService.addDocument('messages', {
+        'id': DateTime.now().millisecondsSinceEpoch,
+        'from': 'LinkUp',
+        'to': providerName,
+        'subject': 'Mission confirmée',
+        'text': '$providerName a été retenu pour « ${request.title} ».',
+        'fromUid': clientUid,
+        'toUid': providerUid,
+        'participants': <String>[clientUid, providerUid],
+      });
+    }
   }
 
   Future<void> sendMessage({
     required String from,
     required String to,
+    required String toUid,
     required String subject,
     required String text,
   }) {
+    final fromUid = _uid;
+    if (fromUid == null) {
+      throw StateError('Connecte-toi pour envoyer un message.');
+    }
+    if (toUid.isEmpty) {
+      throw StateError('Choisis un destinataire.');
+    }
+    if (toUid == fromUid) {
+      throw StateError('Tu ne peux pas t’écrire à toi-même.');
+    }
+
     return FirestoreService.addDocument('messages', {
       'id': DateTime.now().millisecondsSinceEpoch,
       'from': from,
       'to': to,
       'subject': subject,
       'text': text,
-      'createdBy': _uid,
+      'fromUid': fromUid,
+      'toUid': toUid,
+      'participants': <String>[fromUid, toUid],
     });
   }
 
