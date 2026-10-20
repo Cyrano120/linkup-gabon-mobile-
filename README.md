@@ -309,9 +309,24 @@ Trois veilles sourcées et une synthèse orientent la suite du produit :
 | Document | Contenu |
 |---|---|
 | [`docs/SYNTHESE.md`](docs/SYNTHESE.md) | **Synthèse et priorités fonctionnelles** — à lire en premier |
+| [`docs/MODELE-DONNEES.md`](docs/MODELE-DONNEES.md) | **Modèle cible et migration** — à lire avant toute modification des règles |
 | [`docs/RECHERCHE-DESIGN.md`](docs/RECHERCHE-DESIGN.md) | Design mobile, patterns UX, accessibilité, packages Flutter |
 | [`docs/RECHERCHE-CONCURRENCE.md`](docs/RECHERCHE-CONCURRENCE.md) | Marché gabonais, concurrents, monétisation, paiement |
 | [`docs/RECHERCHE-SECURITE.md`](docs/RECHERCHE-SECURITE.md) | Sécurité, règles Firestore prêtes à l'emploi, conformité APDPVP |
+
+### Sécurité des règles Firestore
+
+Les règles de `firestore.rules` sont refusées par défaut et validées par une
+suite de **49 tests** exécutés hors production :
+
+```bash
+firebase emulators:exec --only firestore --project demo-linkup "npm --prefix rules-tests test"
+```
+
+Elles ne sont **pas encore déployées** : elles exigent d'abord que les trois
+applications écrivent les champs de propriété décrits dans
+[`docs/MODELE-DONNEES.md`](docs/MODELE-DONNEES.md), puis que les documents
+existants soient migrés.
 
 ---
 
