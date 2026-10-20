@@ -77,7 +77,7 @@ class AppButton extends StatelessWidget {
   ({Color background, Color foreground, Color? border}) get _style {
     switch (variant) {
       case AppButtonVariant.primary:
-        return (background: GabonColors.green, foreground: Colors.white, border: null);
+        return (background: GabonColors.greenAction, foreground: Colors.white, border: null);
       case AppButtonVariant.yellow:
         return (background: GabonColors.yellow, foreground: GabonColors.greenDark, border: null);
       case AppButtonVariant.ghost:

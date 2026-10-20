@@ -4,6 +4,12 @@
  */
 export const colors = {
   green: '#009E60',
+  /**
+   * Vert d'action : porte les libellés blancs.
+   * Blanc sur #009E60 = 3,47:1 (sous WCAG AA) ; sur #007A4A = 5,41:1.
+   * Le vert vif reste réservé à la décoration (drapeau, accents, icônes).
+   */
+  greenAction: '#007A4A',
   greenDeep: '#0F7A45',
   greenDark: '#03392A',
   yellow: '#FCD116',
@@ -54,4 +60,4 @@ export const shadow = {
 
 export const heroGradient = [colors.greenDark, colors.bgMid, colors.bgBottom] as const;
 export const gabonGradient = [colors.green, colors.yellow, colors.blue] as const;
-export const ctaGradient = [colors.green, colors.blue] as const;
+export const ctaGradient = [colors.greenAction, colors.blue] as const;

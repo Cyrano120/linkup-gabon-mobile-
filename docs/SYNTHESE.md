@@ -261,10 +261,12 @@ compliant* ». Ton concurrent a donc déjà choisi et affiché sa réponse sur c
 | Élément | État |
 |---|---|
 | Données de démonstration limitées aux builds de développement (`__DEV__` / `kDebugMode`) | ✅ Fait, dans les deux apps |
-| Correction de la documentation Firebase (énumération, ciblage FCM) | ✅ Fait aujourd'hui |
+| Correction de la documentation Firebase (énumération, ciblage FCM) | ✅ Fait |
 | Cible web Flutter et configuration VS Code | ✅ Fait |
-| Règles Firestore durcies | ❌ À faire (P0) |
-| Messagerie privée | ❌ À faire (P0) |
+| Règles Firestore durcies | ✅ Déployées le 20 octobre 2026, 49 tests |
+| Messagerie privée | ✅ Fait : `participants`, lecture scopée, destinataire réel |
+| Corrections de design §4 | ❌ À faire |
+| Fonctionnalités P0 2 à 8 | ❌ À faire |
 
 ---
 

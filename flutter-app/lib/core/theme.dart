@@ -5,6 +5,11 @@ class GabonColors {
   const GabonColors._();
 
   static const green = Color(0xFF009E60);
+
+  /// Vert d'action : porte les libellés blancs.
+  /// Blanc sur #009E60 = 3,47:1 (sous WCAG AA) ; sur #007A4A = 5,41:1.
+  /// Le vert vif reste réservé à la décoration (drapeau, accents, icônes).
+  static const greenAction = Color(0xFF007A4A);
   static const greenDeep = Color(0xFF0F7A45);
   static const greenDark = Color(0xFF03392A);
   static const yellow = Color(0xFFFCD116);
@@ -58,8 +63,9 @@ const heroGradient = LinearGradient(
 );
 
 /// Dégradé d'appel à l'action.
+/// Départ en vert d'action : le vert vif laissait le texte blanc à 3,47:1.
 const ctaGradient = LinearGradient(
-  colors: [GabonColors.green, GabonColors.blue],
+  colors: [GabonColors.greenAction, GabonColors.blue],
   begin: Alignment.topLeft,
   end: Alignment.bottomRight,
 );

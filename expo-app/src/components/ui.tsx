@@ -96,7 +96,7 @@ interface BtnProps {
 }
 
 const variantStyles: Record<BtnVariant, { bg: string; fg: string; border?: string }> = {
-  primary: { bg: colors.green, fg: colors.white },
+  primary: { bg: colors.greenAction, fg: colors.white },
   yellow: { bg: colors.yellow, fg: '#1B3A1E' },
   success: { bg: '#E7F8EE', fg: colors.green, border: '#BDEBD2' },
   ghost: { bg: 'rgba(255,255,255,0.14)', fg: colors.white, border: colors.border },

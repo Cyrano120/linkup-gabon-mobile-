@@ -305,7 +305,9 @@ class _Detail extends StatelessWidget {
                         ),
                         Text(
                           '★' * review.rating,
-                          style: const TextStyle(color: GabonColors.yellow, fontSize: 13),
+                          // Ambre foncé : le jaune #FCD116 sur fond blanc ne fait
+                          // que 1,47:1. #B45309 atteint 5,05:1.
+                          style: const TextStyle(color: GabonColors.warning, fontSize: 13),
                         ),
                       ],
                     ),

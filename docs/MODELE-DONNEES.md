@@ -71,6 +71,34 @@ sont **conservés** : les interfaces continuent de fonctionner sans refonte.
 > Les règles ne peuvent pas s'appuyer dessus. On ajoute donc `candidateUids`
 > pour le contrôle d'accès, sans toucher à l'affichage existant.
 
+### `reviews/{requestId}` — avis
+
+L'identifiant du document **est celui de la mission**. Cette seule décision
+apporte trois garanties sans code applicatif : un avis par mission, un avis
+impossible à rattacher à une autre mission, et une création qui échoue si
+l'avis existe déjà.
+
+| Champ | Type | Rôle |
+|---|---|---|
+| `providerId` | string | Document `providers` visé (clé d'affichage). |
+| `providerUid` | string (uid) | Prestataire de la mission. Vérifié contre `requests/{requestId}.providerUid`. |
+| `requestId` | string | Identifiant de la mission (égale l'ID du document). |
+| `authorUid` | string (uid) | Client auteur de l'avis. |
+| `rating` | int 1–5 | Note. |
+| `text` | string 3–1000 | Commentaire. |
+| `createdBy` | string (uid) | Égal à `authorUid`. |
+| `createdAt` | number (ms) | Horodatage. |
+
+**Ce que les règles garantissent** (vérifié par 11 tests) : l'avis n'est créé
+que si la mission existe, qu'elle est `Terminée`, que l'auteur en est le
+client, et que le prestataire visé est celui retenu sur cette mission. Un
+prestataire ne peut donc plus écrire ses propres avis — ce qui restait
+possible tant qu'ils vivaient dans le tableau `reviews` de sa vitrine.
+
+> **Dette assumée** : le tableau `reviews` de `providers` reste autorisé pour
+> ne pas casser les documents existants. Il est **déprécié** : l'affichage
+> doit lire la collection `reviews`, jamais le tableau.
+
 > **Vocabulaire imposé.** `status` vaut exactement `Ouverte`,
 > `En discussion`, `Confirmée` ou `Terminée` ; `urgency` vaut exactement
 > `Aujourd'hui`, `Demain`, `Cette semaine` ou `Flexible`. **Les accents sont

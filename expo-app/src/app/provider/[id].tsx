@@ -207,7 +207,8 @@ const styles = StyleSheet.create({
   review: { marginBottom: spacing.md },
   reviewHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   reviewName: { color: colors.ink, fontWeight: '800', fontSize: 14, flex: 1 },
-  reviewRating: { color: colors.yellow, fontSize: 13 },
+  // Ambre foncé : le jaune #FCD116 sur fond blanc ne fait que 1,47:1.
+  reviewRating: { color: colors.warning, fontSize: 13 },
   reviewText: { color: '#374151', fontSize: 13, lineHeight: 20, marginTop: spacing.sm },
   cta: {
     borderRadius: radius.xl,

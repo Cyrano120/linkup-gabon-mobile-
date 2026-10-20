@@ -362,6 +362,117 @@ describe('messages — messagerie privée', () => {
 
 // ----------------------------------------------------------------- appareils
 
+// --------------------------------------------------------------------- avis
+
+describe('reviews — avis adossés à une mission terminée', () => {
+  const mission = {
+    title: 'Installer Windows et Office',
+    category: 'Informatique',
+    budget: 10000,
+    description: 'Ordinateur à préparer pour les cours.',
+    status: 'Terminée',
+    client: 'Alice',
+    provider: 'Bob',
+    candidateUids: [],
+    createdBy: 'alice',
+    clientUid: 'alice',
+    providerUid: 'bob',
+  };
+
+  const avis = {
+    providerId: 'p1',
+    providerUid: 'bob',
+    requestId: 'r1',
+    authorUid: 'alice',
+    rating: 5,
+    text: 'Travail rapide et soigné.',
+    createdBy: 'alice',
+  };
+
+  it('accepte un avis du client sur une mission terminée', async () => {
+    await seed('requests/r1', mission);
+    await assertSucceeds(setDoc(doc(alice().firestore(), 'reviews', 'r1'), avis));
+  });
+
+  it('refuse un avis si la mission n’est pas terminée', async () => {
+    await seed('requests/r1', { ...mission, status: 'Confirmée' });
+    await assertFails(setDoc(doc(alice().firestore(), 'reviews', 'r1'), avis));
+  });
+
+  it('refuse un avis si la mission n’existe pas', async () => {
+    await assertFails(setDoc(doc(alice().firestore(), 'reviews', 'r1'), avis));
+  });
+
+  it('refuse un avis rédigé par le prestataire lui-même', async () => {
+    await seed('requests/r1', mission);
+    await assertFails(
+      setDoc(doc(bob().firestore(), 'reviews', 'r1'), {
+        ...avis,
+        authorUid: 'bob',
+        createdBy: 'bob',
+      }),
+    );
+  });
+
+  it('refuse un avis qui vise un autre prestataire que celui de la mission', async () => {
+    await seed('requests/r1', mission);
+    await assertFails(
+      setDoc(doc(alice().firestore(), 'reviews', 'r1'), { ...avis, providerUid: 'carol' }),
+    );
+  });
+
+  it("refuse un avis dont l'identifiant ne correspond pas à la mission", async () => {
+    await seed('requests/r1', mission);
+    await assertFails(
+      setDoc(doc(alice().firestore(), 'reviews', 'r9'), { ...avis }),
+    );
+  });
+
+  it('refuse une note hors bornes ou non entière', async () => {
+    await seed('requests/r1', mission);
+    await assertFails(
+      setDoc(doc(alice().firestore(), 'reviews', 'r1'), { ...avis, rating: 6 }),
+    );
+    await assertFails(
+      setDoc(doc(alice().firestore(), 'reviews', 'r1'), { ...avis, rating: 0 }),
+    );
+    await assertFails(
+      setDoc(doc(alice().firestore(), 'reviews', 'r1'), { ...avis, rating: 4.5 }),
+    );
+  });
+
+  it('refuse un commentaire trop court', async () => {
+    await seed('requests/r1', mission);
+    await assertFails(
+      setDoc(doc(alice().firestore(), 'reviews', 'r1'), { ...avis, text: 'ok' }),
+    );
+  });
+
+  it("empêche un tiers de modifier ou supprimer l'avis", async () => {
+    await seed('requests/r1', mission);
+    await seed('reviews/r1', avis);
+    await assertFails(
+      updateDoc(doc(bob().firestore(), 'reviews', 'r1'), { rating: 1 }),
+    );
+    await assertFails(deleteDoc(doc(bob().firestore(), 'reviews', 'r1')));
+  });
+
+  it("autorise l'auteur à corriger puis retirer son avis", async () => {
+    await seed('requests/r1', mission);
+    await seed('reviews/r1', avis);
+    await assertSucceeds(
+      updateDoc(doc(alice().firestore(), 'reviews', 'r1'), { rating: 4 }),
+    );
+    await assertSucceeds(deleteDoc(doc(alice().firestore(), 'reviews', 'r1')));
+  });
+
+  it('laisse les avis lisibles sans compte', async () => {
+    await seed('requests/r1', mission);
+    await seed('reviews/r1', avis);
+    await assertSucceeds(getDoc(doc(anon().firestore(), 'reviews', 'r1')));
+  });
+});
+
 describe('devices — jetons de notification', () => {
   const appareil = { userId: 'alice', token: 'jeton-de-test-123456', platform: 'android' };
 

@@ -110,6 +110,25 @@ service cloud.firestore {
       return optInt(data, key, 0, 4102444800000);
     }
 
+    // Un avis n'est valable que si la mission qu'il référence :
+    //  • existe,
+    //  • est terminée,
+    //  • appartient au client qui écrit,
+    //  • a bien retenu le prestataire visé par l'avis.
+    //
+    // `get()` consomme une lecture supplémentaire : c'est le prix d'une
+    // garantie que le client ne peut pas contourner.
+    function reviewMatchesMission(requestId) {
+      let mission = get(/databases/$(database)/documents/requests/$(requestId));
+      return mission != null
+        && has(mission.data, 'status')
+        && mission.data.status == 'Terminée'
+        && has(mission.data, 'clientUid')
+        && mission.data.clientUid == uid()
+        && has(mission.data, 'providerUid')
+        && mission.data.providerUid == incoming().providerUid;
+    }
+
     // ------------------------------------------------------------- providers
 
     // Vitrine d'un prestataire.
@@ -288,6 +307,73 @@ service cloud.firestore {
       allow delete: if isSignedIn()
         && has(existing(), 'fromUid')
         && existing().fromUid == uid();
+    }
+
+    // --------------------------------------------------------------- reviews
+
+    // Un avis n'existe que s'il porte sur une mission réellement terminée.
+    //
+    // Deux garanties structurelles :
+    //  • l'identifiant du document EST celui de la mission, donc un client ne
+    //    peut déposer qu'un seul avis par mission (la seconde création échoue) ;
+    //  • l'auteur doit être le client de cette mission, et l'avis doit viser le
+    //    prestataire retenu sur CETTE mission — pas un autre profil.
+    //
+    // Un prestataire ne peut donc plus écrire ses propres avis, ce qui était
+    // possible tant qu'ils vivaient dans le tableau `reviews` de sa vitrine.
+    match /reviews/{requestId} {
+      allow read: if true;
+
+      allow create: if isSignedIn()
+        && incoming().requestId == requestId
+        && incoming().authorUid == uid()
+        && incoming().createdBy == uid()
+        && incoming().keys().hasAll([
+             'providerId', 'providerUid', 'requestId', 'authorUid',
+             'rating', 'text', 'createdBy'
+           ])
+        && incoming().keys().hasOnly([
+             'providerId', 'providerUid', 'requestId', 'authorUid',
+             'rating', 'text', 'createdBy', 'createdAt', 'seeded'
+           ])
+        && incoming().providerId is string
+        && incoming().providerId.size() >= 1
+        && incoming().providerId.size() <= 128
+        && incoming().providerUid is string
+        && incoming().providerUid.size() >= 1
+        && incoming().providerUid.size() <= 128
+        && incoming().rating is int
+        && incoming().rating >= 1
+        && incoming().rating <= 5
+        && incoming().text is string
+        && incoming().text.size() >= 3
+        && incoming().text.size() <= 1000
+        && optEpochMs(incoming(), 'createdAt')
+        && reviewMatchesMission(requestId);
+
+      // Seul l'auteur corrige son avis, et il ne peut pas le rattacher à une
+      // autre mission ni à un autre prestataire après coup.
+      allow update: if isSignedIn()
+        && has(existing(), 'authorUid')
+        && existing().authorUid == uid()
+        && incoming().authorUid == existing().authorUid
+        && incoming().requestId == existing().requestId
+        && incoming().providerId == existing().providerId
+        && incoming().providerUid == existing().providerUid
+        && incoming().keys().hasOnly([
+             'providerId', 'providerUid', 'requestId', 'authorUid',
+             'rating', 'text', 'createdBy', 'createdAt', 'seeded'
+           ])
+        && incoming().rating is int
+        && incoming().rating >= 1
+        && incoming().rating <= 5
+        && incoming().text is string
+        && incoming().text.size() >= 3
+        && incoming().text.size() <= 1000;
+
+      allow delete: if isSignedIn()
+        && has(existing(), 'authorUid')
+        && existing().authorUid == uid();
     }
 
     // --------------------------------------------------------------- devices
